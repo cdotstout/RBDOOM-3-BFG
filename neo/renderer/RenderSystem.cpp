@@ -268,11 +268,15 @@ static void R_CheckCvars()
 		{
 			if( r_useSeamlessCubeMap.GetBool() )
 			{
+#if !defined(USE_GLES3) && !defined(USE_GLES2)
 				glEnable( GL_TEXTURE_CUBE_MAP_SEAMLESS );
+#endif
 			}
 			else
 			{
+#if !defined(USE_GLES3) && !defined(USE_GLES2)
 				glDisable( GL_TEXTURE_CUBE_MAP_SEAMLESS );
+#endif
 			}
 		}
 	}
@@ -285,11 +289,15 @@ static void R_CheckCvars()
 		{
 			if( r_useSRGB.GetBool() )
 			{
+#if !defined(USE_GLES3) && !defined(USE_GLES2)
 				glEnable( GL_FRAMEBUFFER_SRGB );
+#endif
 			}
 			else
 			{
+#if !defined(USE_GLES3) && !defined(USE_GLES2)
 				glDisable( GL_FRAMEBUFFER_SRGB );
+#endif
 			}
 		}
 	}
@@ -298,11 +306,15 @@ static void R_CheckCvars()
 	{
 		if( r_multiSamples.GetInteger() > 0 )
 		{
+#if !defined(USE_GLES3) && !defined(USE_GLES2)
 			glEnable( GL_MULTISAMPLE );
+#endif
 		}
 		else
 		{
+#if !defined(USE_GLES3) && !defined(USE_GLES2)
 			glDisable( GL_MULTISAMPLE );
+#endif
 		}
 	}
 	
@@ -702,7 +714,6 @@ const emptyCommand_t* idRenderSystemLocal::SwapCommandBuffers(
 	uint64* shadowMicroSec,
 	uint64* gpuMicroSec )
 {
-
 	SwapCommandBuffers_FinishRendering( frontEndMicroSec, backEndMicroSec, shadowMicroSec, gpuMicroSec );
 	
 	return SwapCommandBuffers_FinishCommandBuffers();
@@ -745,6 +756,7 @@ void idRenderSystemLocal::SwapCommandBuffers_FinishRendering(
 	if( glConfig.timerQueryAvailable )
 	{
 		// RB: 64 bit fixes, changed int64 to GLuint64EXT
+#if !defined(USE_GLES3) && !defined(USE_GLES2)
 		GLuint64EXT drawingTimeNanoseconds = 0;
 		// RB end
 		
@@ -756,6 +768,7 @@ void idRenderSystemLocal::SwapCommandBuffers_FinishRendering(
 		{
 			*gpuMicroSec = drawingTimeNanoseconds / 1000;
 		}
+#endif
 	}
 	
 	//------------------------------

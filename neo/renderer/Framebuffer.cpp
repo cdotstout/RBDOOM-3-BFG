@@ -83,7 +83,11 @@ void Framebuffer::Init()
 		
 		globalFramebuffers.shadowFBO[i] = new Framebuffer( "_shadowMap" , width, height );
 		globalFramebuffers.shadowFBO[i]->Bind();
+#ifdef MOJO
+		glDrawBuffersEXT( 0, NULL );
+#else
 		glDrawBuffers( 0, NULL );
+#endif
 	}
 //	globalFramebuffers.shadowFBO->AddColorBuffer( GL_RGBA8, 0 );
 //	globalFramebuffers.shadowFBO->AddDepthBuffer( GL_DEPTH_COMPONENT24 );
@@ -195,7 +199,9 @@ void Framebuffer::AttachImageDepth( const idImage* image )
 
 void Framebuffer::AttachImageDepthLayer( const idImage* image, int layer )
 {
+#if !defined(USE_GLES3) && !defined(USE_GLES2)
 	glFramebufferTextureLayer( GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, image->texnum, 0, layer );
+#endif
 }
 
 void Framebuffer::Check()
@@ -222,7 +228,7 @@ void Framebuffer::Check()
 		case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT:
 			common->Error( "Framebuffer::Check( %s ): Framebuffer incomplete, missing attachment", fboName.c_str() );
 			break;
-			
+#if !defined(USE_GLES3) && !defined(USE_GLES2)
 		case GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER:
 			common->Error( "Framebuffer::Check( %s ): Framebuffer incomplete, missing draw buffer", fboName.c_str() );
 			break;
@@ -234,7 +240,7 @@ void Framebuffer::Check()
 		case GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS:
 			common->Error( "Framebuffer::Check( %s ): Framebuffer incomplete, missing layer targets", fboName.c_str() );
 			break;
-			
+#endif
 		case GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE:
 			common->Error( "Framebuffer::Check( %s ): Framebuffer incomplete, missing multisample", fboName.c_str() );
 			break;

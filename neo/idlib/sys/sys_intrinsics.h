@@ -31,6 +31,7 @@ If you have questions concerning this license or the applicable additional terms
 
 #if defined(USE_INTRINSICS)
 #include <emmintrin.h>
+#include <x86intrin.h>
 #endif
 /*
 ================================================================================================

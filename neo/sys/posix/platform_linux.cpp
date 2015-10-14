@@ -30,6 +30,7 @@ If you have questions concerning this license or the applicable additional terms
 #include "../posix/posix_public.h"
 #include "../sys_local.h"
 //#include "local.h"
+#include "SDL.h"
 
 #include <pthread.h>
 #include <errno.h>
@@ -514,8 +515,13 @@ void Sys_ReLaunch()
 main
 ===============
 */
+#ifdef MOJO
+int SDL_main(int argc, char* argv[])
+#else
 int main( int argc, const char** argv )
+#endif
 {
+#if !defined(MOJO)
 	// DG: needed for Sys_ReLaunch()
 	cmdargc = argc;
 	cmdargv = argv;
@@ -533,6 +539,7 @@ int main( int argc, const char** argv )
 		common->Init( argc - 1, &argv[1], NULL );
 	}
 	else
+#endif
 	{
 		common->Init( 0, NULL, NULL );
 	}
@@ -543,4 +550,6 @@ int main( int argc, const char** argv )
 	{
 		common->Frame();
 	}
+
+	return 0;
 }

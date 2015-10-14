@@ -346,12 +346,16 @@ static void R_CheckPortableExtensions()
 	{
 		glConfig.vendor = VENDOR_INTEL;
 	}
-	
+
+#ifdef MOJO
+	glConfig.driverType = GLDRV_OPENGL_MESA;
+#else
 	// RB: Mesa support
 	if( idStr::Icmpn( glConfig.renderer_string, "Mesa", 4 ) == 0 || idStr::Icmpn( glConfig.renderer_string, "X.org", 4 ) == 0 || idStr::Icmpn( glConfig.renderer_string, "Gallium", 7 ) == 0 )
 	{
 		glConfig.driverType = GLDRV_OPENGL_MESA;
 	}
+#endif
 	// RB end
 	
 	// GL_ARB_multitexture
@@ -361,19 +365,18 @@ static void R_CheckPortableExtensions()
 	}
 	else
 	{
-		glConfig.multitextureAvailable = GLEW_ARB_multitexture != 0;
+		glConfig.multitextureAvailable = 1;//GLEW_ARB_multitexture != 0;
 	}
 	
 	// GL_EXT_direct_state_access
-	glConfig.directStateAccess = GLEW_EXT_direct_state_access != 0;
-	
+	glConfig.directStateAccess = 0;//GLEW_EXT_direct_state_access != 0;
 	
 	// GL_ARB_texture_compression + GL_S3_s3tc
 	// DRI drivers may have GL_ARB_texture_compression but no GL_EXT_texture_compression_s3tc
-	glConfig.textureCompressionAvailable = GLEW_ARB_texture_compression != 0 && GLEW_EXT_texture_compression_s3tc != 0;
+	glConfig.textureCompressionAvailable = 1;//GLEW_ARB_texture_compression != 0 && 0;//GLEW_EXT_texture_compression_s3tc != 0;
 	
 	// GL_EXT_texture_filter_anisotropic
-	glConfig.anisotropicFilterAvailable = GLEW_EXT_texture_filter_anisotropic != 0;
+	glConfig.anisotropicFilterAvailable = 1;//GLEW_EXT_texture_filter_anisotropic != 0;
 	if( glConfig.anisotropicFilterAvailable )
 	{
 		glGetFloatv( GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &glConfig.maxTextureAnisotropy );
@@ -387,7 +390,7 @@ static void R_CheckPortableExtensions()
 	// GL_EXT_texture_lod_bias
 	// The actual extension is broken as specificed, storing the state in the texture unit instead
 	// of the texture object.  The behavior in GL 1.4 is the behavior we use.
-	glConfig.textureLODBiasAvailable = ( glConfig.glVersion >= 1.4 || GLEW_EXT_texture_lod_bias != 0 );
+	glConfig.textureLODBiasAvailable = 1;//( glConfig.glVersion >= 1.4 || GLEW_EXT_texture_lod_bias != 0 );
 	if( glConfig.textureLODBiasAvailable )
 	{
 		common->Printf( "...using %s\n", "GL_EXT_texture_lod_bias" );
@@ -398,30 +401,32 @@ static void R_CheckPortableExtensions()
 	}
 	
 	// GL_ARB_seamless_cube_map
-	glConfig.seamlessCubeMapAvailable = GLEW_ARB_seamless_cube_map != 0;
+	glConfig.seamlessCubeMapAvailable = 1;//GLEW_ARB_seamless_cube_map != 0;
 	r_useSeamlessCubeMap.SetModified();		// the CheckCvars() next frame will enable / disable it
 	
 	// GL_ARB_framebuffer_sRGB
-	glConfig.sRGBFramebufferAvailable = GLEW_ARB_framebuffer_sRGB != 0;
+	glConfig.sRGBFramebufferAvailable = 1;//GLEW_ARB_framebuffer_sRGB != 0;
 	r_useSRGB.SetModified();		// the CheckCvars() next frame will enable / disable it
 	
 	// GL_ARB_vertex_buffer_object
-	glConfig.vertexBufferObjectAvailable = GLEW_ARB_vertex_buffer_object != 0;
+	glConfig.vertexBufferObjectAvailable = 1;//GLEW_ARB_vertex_buffer_object != 0;
 	
 	// GL_ARB_map_buffer_range, map a section of a buffer object's data store
-	glConfig.mapBufferRangeAvailable = GLEW_ARB_map_buffer_range != 0;
+	glConfig.mapBufferRangeAvailable = 1;//GLEW_ARB_map_buffer_range != 0;
 	
 	// GL_ARB_vertex_array_object
-	glConfig.vertexArrayObjectAvailable = GLEW_ARB_vertex_array_object != 0;
+	glConfig.vertexArrayObjectAvailable = 1;//GLEW_ARB_vertex_array_object != 0;
 	
 	// GL_ARB_draw_elements_base_vertex
-	glConfig.drawElementsBaseVertexAvailable = GLEW_ARB_draw_elements_base_vertex != 0;
+	glConfig.drawElementsBaseVertexAvailable = 1;//GLEW_ARB_draw_elements_base_vertex != 0;
 	
 	// GL_ARB_vertex_program / GL_ARB_fragment_program
-	glConfig.fragmentProgramAvailable = GLEW_ARB_fragment_program != 0;
+	glConfig.fragmentProgramAvailable = 1;//GLEW_ARB_fragment_program != 0;
 	//if( glConfig.fragmentProgramAvailable )
 	{
+#if !defined(USE_GLES3) && !defined(USE_GLES2)
 		glGetIntegerv( GL_MAX_TEXTURE_COORDS, ( GLint* )&glConfig.maxTextureCoords );
+#endif
 		glGetIntegerv( GL_MAX_TEXTURE_IMAGE_UNITS, ( GLint* )&glConfig.maxTextureImageUnits );
 	}
 	
@@ -429,7 +434,7 @@ static void R_CheckPortableExtensions()
 	glConfig.glslAvailable = ( glConfig.glVersion >= 2.0f );
 	
 	// GL_ARB_uniform_buffer_object
-	glConfig.uniformBufferAvailable = GLEW_ARB_uniform_buffer_object != 0;
+	glConfig.uniformBufferAvailable = 1;//GLEW_ARB_uniform_buffer_object != 0;
 	if( glConfig.uniformBufferAvailable )
 	{
 		glGetIntegerv( GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, ( GLint* )&glConfig.uniformBufferOffsetAlignment );
@@ -439,28 +444,28 @@ static void R_CheckPortableExtensions()
 		}
 	}
 	// RB: make GPU skinning optional for weak OpenGL drivers
-	glConfig.gpuSkinningAvailable = glConfig.uniformBufferAvailable && ( glConfig.driverType == GLDRV_OPENGL3X || glConfig.driverType == GLDRV_OPENGL32_CORE_PROFILE || glConfig.driverType == GLDRV_OPENGL32_COMPATIBILITY_PROFILE );
+	glConfig.gpuSkinningAvailable = 0;//glConfig.uniformBufferAvailable && ( glConfig.driverType == GLDRV_OPENGL3X || glConfig.driverType == GLDRV_OPENGL32_CORE_PROFILE || glConfig.driverType == GLDRV_OPENGL32_COMPATIBILITY_PROFILE );
 	
 	// ATI_separate_stencil / OpenGL 2.0 separate stencil
-	glConfig.twoSidedStencilAvailable = ( glConfig.glVersion >= 2.0f ) || GLEW_ATI_separate_stencil != 0;
+	glConfig.twoSidedStencilAvailable = 1;//( glConfig.glVersion >= 2.0f ) || GLEW_ATI_separate_stencil != 0;
 	
 	// GL_EXT_depth_bounds_test
-	glConfig.depthBoundsTestAvailable = GLEW_EXT_depth_bounds_test != 0;
+	glConfig.depthBoundsTestAvailable = 0;//GLEW_EXT_depth_bounds_test != 0;
 	
 	// GL_ARB_sync
-	glConfig.syncAvailable = GLEW_ARB_sync &&
+	glConfig.syncAvailable = 0;//GLEW_ARB_sync &&
 							 // as of 5/24/2012 (driver version 15.26.12.64.2761) sync objects
 							 // do not appear to work for the Intel HD 4000 graphics
 							 ( glConfig.vendor != VENDOR_INTEL || r_skipIntelWorkarounds.GetBool() );
 							 
 	// GL_ARB_occlusion_query
-	glConfig.occlusionQueryAvailable = GLEW_ARB_occlusion_query != 0;
+	glConfig.occlusionQueryAvailable = 1;//GLEW_ARB_occlusion_query != 0;
 	
 	// GL_ARB_timer_query
-	glConfig.timerQueryAvailable = ( GLEW_ARB_timer_query != 0 || GLEW_EXT_timer_query != 0 ) && ( glConfig.vendor != VENDOR_INTEL || r_skipIntelWorkarounds.GetBool() ) && glConfig.driverType != GLDRV_OPENGL_MESA;
+	glConfig.timerQueryAvailable = 1;//( GLEW_ARB_timer_query != 0 || GLEW_EXT_timer_query != 0 ) && ( glConfig.vendor != VENDOR_INTEL || r_skipIntelWorkarounds.GetBool() ) && glConfig.driverType != GLDRV_OPENGL_MESA;
 	
 	// GREMEDY_string_marker
-	glConfig.gremedyStringMarkerAvailable = GLEW_GREMEDY_string_marker != 0;
+	glConfig.gremedyStringMarkerAvailable = 0;//GLEW_GREMEDY_string_marker != 0;
 	if( glConfig.gremedyStringMarkerAvailable )
 	{
 		common->Printf( "...using %s\n", "GL_GREMEDY_string_marker" );
@@ -471,7 +476,7 @@ static void R_CheckPortableExtensions()
 	}
 	
 	// GL_EXT_framebuffer_object
-	glConfig.framebufferObjectAvailable = GLEW_EXT_framebuffer_object != 0;
+	glConfig.framebufferObjectAvailable = 1;//GLEW_EXT_framebuffer_object != 0;
 	if( glConfig.framebufferObjectAvailable )
 	{
 		glGetIntegerv( GL_MAX_RENDERBUFFER_SIZE, &glConfig.maxRenderbufferSize );
@@ -485,7 +490,7 @@ static void R_CheckPortableExtensions()
 	}
 	
 	// GL_EXT_framebuffer_blit
-	glConfig.framebufferBlitAvailable = GLEW_EXT_framebuffer_blit != 0;
+	glConfig.framebufferBlitAvailable = 1;//GLEW_EXT_framebuffer_blit != 0;
 	if( glConfig.framebufferBlitAvailable )
 	{
 		common->Printf( "...using %s\n", "GL_EXT_framebuffer_blit" );
@@ -496,25 +501,31 @@ static void R_CheckPortableExtensions()
 	}
 	
 	// GL_ARB_debug_output
-	glConfig.debugOutputAvailable = GLEW_ARB_debug_output != 0;
+	glConfig.debugOutputAvailable = 1;//GLEW_ARB_debug_output != 0;
 	if( glConfig.debugOutputAvailable )
 	{
 		if( r_debugContext.GetInteger() >= 1 )
 		{
+#if !defined(USE_GLES3) && !defined(USE_GLES2)
 			glDebugMessageCallbackARB( ( GLDEBUGPROCARB ) DebugCallback, NULL );
+#endif
 		}
 		if( r_debugContext.GetInteger() >= 2 )
 		{
 			// force everything to happen in the main thread instead of in a separate driver thread
+#if !defined(USE_GLES3) && !defined(USE_GLES2)
 			glEnable( GL_DEBUG_OUTPUT_SYNCHRONOUS_ARB );
+#endif
 		}
 		if( r_debugContext.GetInteger() >= 3 )
 		{
 			// enable all the low priority messages
+#if !defined(USE_GLES3) && !defined(USE_GLES2)
 			glDebugMessageControlARB( GL_DONT_CARE,
 									  GL_DONT_CARE,
 									  GL_DEBUG_SEVERITY_LOW_ARB,
 									  0, NULL, true );
+#endif
 		}
 	}
 	
@@ -570,8 +581,13 @@ static void R_CheckPortableExtensions()
 	}
 	
 	// generate one global Vertex Array Object (VAO)
+#ifdef MOJO
+	glGenVertexArraysOES( 1, &glConfig.global_vao );
+	glBindVertexArrayOES( glConfig.global_vao );
+#else
 	glGenVertexArrays( 1, &glConfig.global_vao );
 	glBindVertexArray( glConfig.global_vao );
+#endif
 }
 // RB end
 
@@ -773,7 +789,7 @@ void R_InitOpenGL()
 	{
 		// As of OpenGL 3.2, glGetStringi is required to obtain the available extensions
 		//glGetStringi = ( PFNGLGETSTRINGIPROC )GLimp_ExtensionPointer( "glGetStringi" );
-		
+#if !defined(USE_GLES3) && !defined(USE_GLES2)
 		// Build the extensions string
 		GLint numExtensions;
 		glGetIntegerv( GL_NUM_EXTENSIONS, &numExtensions );
@@ -788,9 +804,13 @@ void R_InitOpenGL()
 			}
 		}
 		glConfig.extensions_string = extensions_string.c_str();
+#endif
 	}
 	
-	
+#ifdef MOJO
+	glConfig.version_string = "2.0";
+	glConfig.shading_language_string = "1.0";
+#endif
 	float glVersion = atof( glConfig.version_string );
 	float glslVersion = atof( glConfig.shading_language_string );
 	idLib::Printf( "OpenGL Version  : %3.1f\n", glVersion );
@@ -1500,8 +1520,9 @@ void R_StencilShot()
 	
 	idTempArray< byte > byteBuffer( pix );
 	
+#if !defined(USE_GLES3) && !defined(USE_GLES2)
 	glReadPixels( 0, 0, width, height, GL_STENCIL_INDEX , GL_UNSIGNED_BYTE, byteBuffer.Ptr() );
-	
+#endif
 	for( i = 0 ; i < pix ; i++ )
 	{
 		buffer[18 + i * 3] =
@@ -2728,8 +2749,10 @@ void idRenderSystemLocal::Shutdown()
 	// free the vertex cache, which should have nothing allocated now
 	vertexCache.Shutdown();
 	
+#if !defined(MOJO)
 	RB_ShutdownDebugTools();
-	
+#endif
+
 	delete guiModel;
 	
 	parallelJobManager->FreeJobList( frontEndJobList );

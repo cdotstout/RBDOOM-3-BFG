@@ -573,11 +573,13 @@ void idImage::Bind()
 			tmu->current2DMap = texnum;
 			
 			// RB begin
+#if !defined(USE_GLES2) && !defined(USE_GLES3)
 			if( glConfig.directStateAccess )
 			{
 				glBindMultiTextureEXT( GL_TEXTURE0 + texUnit, GL_TEXTURE_2D, texnum );
 			}
 			else
+#endif
 			{
 				glActiveTexture( GL_TEXTURE0 + texUnit );
 				glBindTexture( GL_TEXTURE_2D, texnum );

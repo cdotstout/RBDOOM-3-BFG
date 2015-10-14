@@ -263,6 +263,7 @@ bool GLimp_Init( glimpParms_t parms )
 		// RB end
 		
 		glConfig.isFullscreen = ( SDL_GetWindowFlags( window ) & SDL_WINDOW_FULLSCREEN ) == SDL_WINDOW_FULLSCREEN;
+		//glConfig.driverType = GLDRV_OPENGL_MESA;
 #else
 		glConfig.driverType = GLDRV_OPENGL3X;
 		
@@ -315,6 +316,7 @@ bool GLimp_Init( glimpParms_t parms )
 	glewExperimental = GL_TRUE;
 #endif
 	
+#if !defined(MOJO)
 	GLenum glewResult = glewInit();
 	if( GLEW_OK != glewResult )
 	{
@@ -325,7 +327,8 @@ bool GLimp_Init( glimpParms_t parms )
 	{
 		common->Printf( "Using GLEW %s\n", glewGetString( GLEW_VERSION ) );
 	}
-	
+#endif
+
 	// DG: disable cursor, we have two cursors in menu (because mouse isn't grabbed in menu)
 	SDL_ShowCursor( SDL_DISABLE );
 	// DG end

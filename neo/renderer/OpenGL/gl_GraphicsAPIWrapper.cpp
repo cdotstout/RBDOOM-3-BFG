@@ -162,7 +162,10 @@ void GL_DepthBoundsTest( const float zmin, const float zmax )
 	else
 	{
 		glEnable( GL_DEPTH_BOUNDS_TEST_EXT );
+#if !defined(USE_GLES3) && !defined(USE_GLES2)
 		glDepthBoundsEXT( zmin, zmax );
+#endif
+
 	}
 }
 
@@ -284,8 +287,12 @@ void GL_SetDefaultState()
 {
 	RENDERLOG_PRINTF( "--- GL_SetDefaultState ---\n" );
 	
+#if defined(USE_GLES3) || defined(USE_GLES2)
+	glClearDepthf( 1.0f );
+#else
 	glClearDepth( 1.0f );
-	
+#endif
+
 	// make sure our GL state vector is set correctly
 	memset( &backEnd.glState, 0, sizeof( backEnd.glState ) );
 	GL_State( 0, true );
@@ -305,9 +312,10 @@ void GL_SetDefaultState()
 	glDepthFunc( GL_LESS );
 	glDisable( GL_STENCIL_TEST );
 	glDisable( GL_POLYGON_OFFSET_FILL );
+#if !defined(USE_GLES3) && !defined(USE_GLES2)
 	glDisable( GL_POLYGON_OFFSET_LINE );
 	glPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
-	
+#endif
 	// These should never be changed
 	// DG: deprecated in opengl 3.2 and not needed because we don't do fixed function pipeline
 	// glShadeModel( GL_SMOOTH );
@@ -315,7 +323,9 @@ void GL_SetDefaultState()
 	glEnable( GL_DEPTH_TEST );
 	glEnable( GL_BLEND );
 	glEnable( GL_SCISSOR_TEST );
+#if !defined(USE_GLES3) && !defined(USE_GLES2)
 	glDrawBuffer( GL_BACK );
+#endif
 	glReadBuffer( GL_BACK );
 	
 	if( r_useScissor.GetBool() )
@@ -484,11 +494,15 @@ void GL_State( uint64 stateBits, bool forceGlState )
 	{
 		if( stateBits & GLS_POLYMODE_LINE )
 		{
+#if !defined(USE_GLES3) && !defined(USE_GLES2)
 			glPolygonMode( GL_FRONT_AND_BACK, GL_LINE );
+#endif
 		}
 		else
 		{
+#if !defined(USE_GLES3) && !defined(USE_GLES2)
 			glPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
+#endif
 		}
 	}
 	
@@ -501,12 +515,16 @@ void GL_State( uint64 stateBits, bool forceGlState )
 		{
 			glPolygonOffset( backEnd.glState.polyOfsScale, backEnd.glState.polyOfsBias );
 			glEnable( GL_POLYGON_OFFSET_FILL );
+#if !defined(USE_GLES3) && !defined(USE_GLES2)
 			glEnable( GL_POLYGON_OFFSET_LINE );
+#endif
 		}
 		else
 		{
 			glDisable( GL_POLYGON_OFFSET_FILL );
+#if !defined(USE_GLES3) && !defined(USE_GLES2)
 			glDisable( GL_POLYGON_OFFSET_LINE );
+#endif
 		}
 	}
 	

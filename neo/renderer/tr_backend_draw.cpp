@@ -216,8 +216,10 @@ void RB_DrawElementsWithCounters( const drawSurf_t* surf )
 		// RB: 64 bit fixes, changed GLuint to GLintptr
 		const GLintptr ubo = reinterpret_cast< GLintptr >( jointBuffer.GetAPIObject() );
 		// RB end
-		
+
+#if !defined(USE_GLES3) && !defined(USE_GLES2)
 		glBindBufferRange( GL_UNIFORM_BUFFER, 0, ubo, jointBuffer.GetOffset(), jointBuffer.GetNumJoints() * sizeof( idJointMat ) );
+#endif
 	}
 	
 	renderProgManager.CommitUniforms();
@@ -241,7 +243,7 @@ void RB_DrawElementsWithCounters( const drawSurf_t* surf )
 		glEnableVertexAttribArray( PC_ATTRIB_INDEX_ST );
 		glEnableVertexAttribArray( PC_ATTRIB_INDEX_TANGENT );
 		
-#if defined(USE_GLES2) || defined(USE_GLES3)
+#if 0//defined(USE_GLES2) || defined(USE_GLES3)
 		glVertexAttribPointer( PC_ATTRIB_INDEX_VERTEX, 3, GL_FLOAT, GL_FALSE, sizeof( idDrawVert ), ( void* )( vertOffset + DRAWVERT_XYZ_OFFSET ) );
 		glVertexAttribPointer( PC_ATTRIB_INDEX_NORMAL, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof( idDrawVert ), ( void* )( vertOffset + DRAWVERT_NORMAL_OFFSET ) );
 		glVertexAttribPointer( PC_ATTRIB_INDEX_COLOR, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof( idDrawVert ), ( void* )( vertOffset + DRAWVERT_COLOR_OFFSET ) );
@@ -266,11 +268,12 @@ void RB_DrawElementsWithCounters( const drawSurf_t* surf )
 	}
 	// RB end
 	
-#if defined(USE_GLES3) //defined(USE_GLES2)
-	glDrawElements(	GL_TRIANGLES,
-					r_singleTriangle.GetBool() ? 3 : surf->numIndexes,
-					GL_INDEX_TYPE,
-					( triIndex_t* )indexOffset );
+#if defined(MOJO) //defined(USE_GLES2)
+	glDrawElementsBaseVertexOES( GL_TRIANGLES,
+							  r_singleTriangle.GetBool() ? 3 : surf->numIndexes,
+							  GL_INDEX_TYPE,
+							  ( triIndex_t* )indexOffset,
+							  vertOffset / sizeof( idDrawVert ) );
 #else
 	glDrawElementsBaseVertex( GL_TRIANGLES,
 							  r_singleTriangle.GetBool() ? 3 : surf->numIndexes,
@@ -1984,8 +1987,10 @@ static void RB_StencilShadowPass( const drawSurf_t* drawSurfs, const viewLight_t
 			assert( ( jointBuffer.GetOffset() & ( glConfig.uniformBufferOffsetAlignment - 1 ) ) == 0 );
 			
 			const GLintptr ubo = reinterpret_cast< GLintptr >( jointBuffer.GetAPIObject() );
+#if !defined(USE_GLES3) && !defined(USE_GLES2)
 			glBindBufferRange( GL_UNIFORM_BUFFER, 0, ubo, jointBuffer.GetOffset(), jointBuffer.GetNumJoints() * sizeof( idJointMat ) );
-			
+#endif
+
 			if( ( backEnd.glState.vertexLayout != LAYOUT_DRAW_SHADOW_VERT_SKINNED ) || ( backEnd.glState.currentVertexBuffer != ( GLintptr )vertexBuffer->GetAPIObject() ) || !r_useStateCaching.GetBool() )
 			{
 				glBindBuffer( GL_ARRAY_BUFFER, ( GLintptr )vertexBuffer->GetAPIObject() );
@@ -1998,7 +2003,7 @@ static void RB_StencilShadowPass( const drawSurf_t* drawSurfs, const viewLight_t
 				glDisableVertexAttribArray( PC_ATTRIB_INDEX_ST );
 				glDisableVertexAttribArray( PC_ATTRIB_INDEX_TANGENT );
 				
-#if defined(USE_GLES2) || defined(USE_GLES3)
+#if 0 //defined(USE_GLES2) || defined(USE_GLES3)
 				glVertexAttribPointer( PC_ATTRIB_INDEX_VERTEX, 4, GL_FLOAT, GL_FALSE, sizeof( idShadowVertSkinned ), ( void* )( vertOffset + SHADOWVERTSKINNED_XYZW_OFFSET ) );
 				glVertexAttribPointer( PC_ATTRIB_INDEX_COLOR, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof( idShadowVertSkinned ), ( void* )( vertOffset + SHADOWVERTSKINNED_COLOR_OFFSET ) );
 				glVertexAttribPointer( PC_ATTRIB_INDEX_COLOR2, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof( idShadowVertSkinned ), ( void* )( vertOffset + SHADOWVERTSKINNED_COLOR2_OFFSET ) );
@@ -2026,7 +2031,7 @@ static void RB_StencilShadowPass( const drawSurf_t* drawSurfs, const viewLight_t
 				glDisableVertexAttribArray( PC_ATTRIB_INDEX_ST );
 				glDisableVertexAttribArray( PC_ATTRIB_INDEX_TANGENT );
 				
-#if defined(USE_GLES2) || defined(USE_GLES3)
+#if 0 //defined(USE_GLES2) || defined(USE_GLES3)
 				glVertexAttribPointer( PC_ATTRIB_INDEX_VERTEX, 4, GL_FLOAT, GL_FALSE, sizeof( idShadowVert ), ( void* )( vertOffset + SHADOWVERT_XYZW_OFFSET ) );
 #else
 				glVertexAttribPointer( PC_ATTRIB_INDEX_VERTEX, 4, GL_FLOAT, GL_FALSE, sizeof( idShadowVert ), ( void* )( SHADOWVERT_XYZW_OFFSET ) );
@@ -2041,16 +2046,16 @@ static void RB_StencilShadowPass( const drawSurf_t* drawSurfs, const viewLight_t
 		
 		if( drawSurf->jointCache )
 		{
-#if defined(USE_GLES3) //defined(USE_GLES2)
-			glDrawElements( GL_TRIANGLES, r_singleTriangle.GetBool() ? 3 : drawSurf->numIndexes, GL_INDEX_TYPE, ( triIndex_t* )indexOffset );
+#if defined(MOJO) //defined(USE_GLES2)
+			glDrawElementsBaseVertexOES( GL_TRIANGLES, r_singleTriangle.GetBool() ? 3 : drawSurf->numIndexes, GL_INDEX_TYPE, ( triIndex_t* )indexOffset, vertOffset / sizeof( idShadowVertSkinned ) );
 #else
 			glDrawElementsBaseVertex( GL_TRIANGLES, r_singleTriangle.GetBool() ? 3 : drawSurf->numIndexes, GL_INDEX_TYPE, ( triIndex_t* )indexOffset, vertOffset / sizeof( idShadowVertSkinned ) );
 #endif
 		}
 		else
 		{
-#if defined(USE_GLES3)
-			glDrawElements( GL_TRIANGLES, r_singleTriangle.GetBool() ? 3 : drawSurf->numIndexes, GL_INDEX_TYPE, ( triIndex_t* )indexOffset );
+#if defined(MOJO)
+			glDrawElementsBaseVertexOES( GL_TRIANGLES, r_singleTriangle.GetBool() ? 3 : drawSurf->numIndexes, GL_INDEX_TYPE, ( triIndex_t* )indexOffset, vertOffset / sizeof( idShadowVert ) );
 #else
 			glDrawElementsBaseVertex( GL_TRIANGLES, r_singleTriangle.GetBool() ? 3 : drawSurf->numIndexes, GL_INDEX_TYPE, ( triIndex_t* )indexOffset, vertOffset / sizeof( idShadowVert ) );
 #endif
@@ -2069,16 +2074,16 @@ static void RB_StencilShadowPass( const drawSurf_t* drawSurfs, const viewLight_t
 			
 			if( drawSurf->jointCache )
 			{
-#if defined(USE_GLES3)
-				glDrawElements( GL_TRIANGLES, r_singleTriangle.GetBool() ? 3 : drawSurf->numIndexes, GL_INDEX_TYPE, ( triIndex_t* )indexOffset );
+#if defined(MOJO)
+				glDrawElementsBaseVertexOES( GL_TRIANGLES, r_singleTriangle.GetBool() ? 3 : drawSurf->numIndexes, GL_INDEX_TYPE, ( triIndex_t* )indexOffset, vertOffset / sizeof( idShadowVertSkinned ) );
 #else
 				glDrawElementsBaseVertex( GL_TRIANGLES, r_singleTriangle.GetBool() ? 3 : drawSurf->numIndexes, GL_INDEX_TYPE, ( triIndex_t* )indexOffset, vertOffset / sizeof( idShadowVertSkinned ) );
 #endif
 			}
 			else
 			{
-#if defined(USE_GLES3)
-				glDrawElements( GL_TRIANGLES, r_singleTriangle.GetBool() ? 3 : drawSurf->numIndexes, GL_INDEX_TYPE, ( triIndex_t* )indexOffset );
+#if defined(MOJO)
+				glDrawElementsBaseVertexOES( GL_TRIANGLES, r_singleTriangle.GetBool() ? 3 : drawSurf->numIndexes, GL_INDEX_TYPE, ( triIndex_t* )indexOffset, vertOffset / sizeof( idShadowVert ) );
 #else
 				glDrawElementsBaseVertex( GL_TRIANGLES, r_singleTriangle.GetBool() ? 3 : drawSurf->numIndexes, GL_INDEX_TYPE, ( triIndex_t* )indexOffset, vertOffset / sizeof( idShadowVert ) );
 #endif
@@ -3856,9 +3861,13 @@ void RB_DrawViewInternal( const viewDef_t* viewDef, const int stereoEye )
 	
 #if defined(USE_CORE_PROFILE) && !defined(USE_GLES2) && !defined(USE_GLES3)
 	// bind one global Vertex Array Object (VAO)
+#ifdef MOJO
+	glBindVertexArrayOES( glConfig.global_vao );
+#else
 	glBindVertexArray( glConfig.global_vao );
 #endif
-	
+#endif
+
 	//------------------------------------
 	// sets variables that can be used by all programs
 	//------------------------------------
@@ -3984,8 +3993,10 @@ void RB_DrawViewInternal( const viewDef_t* viewDef, const int stereoEye )
 	//-------------------------------------------------
 	// render debug tools
 	//-------------------------------------------------
+#if !defined(MOJO)
 	RB_RenderDebugTools( drawSurfs, numDrawSurfs );
-	
+#endif
+
 	renderLog.CloseBlock();
 }
 
@@ -4146,8 +4157,10 @@ void RB_DrawView( const void* data, const int stereoEye )
 	
 	backEnd.pc.c_surfaces += backEnd.viewDef->numDrawSurfs;
 	
+#if !defined(MOJO)
 	RB_ShowOverdraw();
-	
+#endif
+
 	// render the scene
 	RB_DrawViewInternal( cmd->viewDef, stereoEye );
 	

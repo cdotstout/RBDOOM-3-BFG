@@ -156,6 +156,7 @@ const void GL_BlockingSwapBuffers()
 	
 	if( glConfig.syncAvailable )
 	{
+#if !defined(USE_GLES3) && !defined(USE_GLES2)
 		swapIndex ^= 1;
 		
 		if( glIsSync( renderSync[swapIndex] ) )
@@ -191,6 +192,7 @@ const void GL_BlockingSwapBuffers()
 				r = glClientWaitSync( syncToWaitOn, GL_SYNC_FLUSH_COMMANDS_BIT, 1000 * 1000 );
 			}
 		}
+#endif
 	}
 	
 	const int afterFence = Sys_Milliseconds();
@@ -243,8 +245,10 @@ void RB_StereoRenderExecuteBackEndCommands( const emptyCommand_t* const allCmds 
 	// To allow stereo deghost processing, the views have to be copied to separate
 	// textures anyway, so there isn't any benefit to rendering to BACK_RIGHT for
 	// that eye.
+#if !defined(USE_GLES3) && !defined(USE_GLES2)
 	glDrawBuffer( GL_BACK_LEFT );
-	
+#endif
+
 	// create the stereoRenderImage if we haven't already
 	static idImage* stereoRenderImages[2];
 	for( int i = 0; i < 2; i++ )
@@ -346,7 +350,9 @@ void RB_StereoRenderExecuteBackEndCommands( const emptyCommand_t* const allCmds 
 	// a confusing, half-ghosted view.
 	if( renderSystem->GetStereo3DMode() != STEREO3D_QUAD_BUFFER )
 	{
+#if !defined(USE_GLES3) && !defined(USE_GLES2)
 		glDrawBuffer( GL_BACK );
+#endif
 	}
 	
 	GL_State( GLS_DEPTHFUNC_ALWAYS );
@@ -370,14 +376,18 @@ void RB_StereoRenderExecuteBackEndCommands( const emptyCommand_t* const allCmds 
 	switch( renderSystem->GetStereo3DMode() )
 	{
 		case STEREO3D_QUAD_BUFFER:
+#if !defined(USE_GLES3) && !defined(USE_GLES2)
 			glDrawBuffer( GL_BACK_RIGHT );
+#endif
 			GL_SelectTexture( 0 );
 			stereoRenderImages[1]->Bind();
 			GL_SelectTexture( 1 );
 			stereoRenderImages[0]->Bind();
 			RB_DrawElementsWithCounters( &backEnd.unitSquareSurface );
 			
+#if !defined(USE_GLES3) && !defined(USE_GLES2)
 			glDrawBuffer( GL_BACK_LEFT );
+#endif
 			GL_SelectTexture( 1 );
 			stereoRenderImages[1]->Bind();
 			GL_SelectTexture( 0 );
@@ -574,8 +584,10 @@ void RB_ExecuteBackEndCommands( const emptyCommand_t* cmds )
 	// If we have a stereo pixel format, this will draw to both
 	// the back left and back right buffers, which will have a
 	// performance penalty.
+#if !defined(USE_GLES3) && !defined(USE_GLES2)
 	glDrawBuffer( GL_BACK );
-	
+#endif
+
 	for( ; cmds != NULL; cmds = ( const emptyCommand_t* )cmds->next )
 	{
 		switch( cmds->commandId )

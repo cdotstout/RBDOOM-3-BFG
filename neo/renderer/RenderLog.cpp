@@ -436,8 +436,10 @@ void idRenderLog::Printf( const char* fmt, ... )
 	
 	out.Append( msg );
 	
+#if !defined(USE_GLES3) && !defined(USE_GLES2)
 	glStringMarkerGREMEDY( out.Length(), out.c_str() );
-	
+#endif
+
 	//logFile->Printf( "%s", indentString );
 	//va_start( marker, fmt );
 	//logFile->VPrintf( fmt, marker );
@@ -489,7 +491,9 @@ void idRenderLog::LogOpenBlock( renderLogIndentLabel_t label, const char* fmt, .
 			out.Append( msg );
 			out += " {";
 			
+#if !defined(USE_GLES3) && !defined(USE_GLES2)
 			glStringMarkerGREMEDY( out.Length(), out.c_str() );
+#endif
 		}
 #endif
 	}

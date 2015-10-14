@@ -2154,11 +2154,11 @@ void idRenderProgManager::LoadGLSLProgram( const int programIndex, const int ver
 		return;
 	}
 	
+	printf("Program %i.\n", vertexProgID);
 	if( r_useUniformArrays.GetBool() )
 	{
 		prog.vertexUniformArray = glGetUniformLocation( program, VERTEX_UNIFORM_ARRAY_NAME );
 		prog.fragmentUniformArray = glGetUniformLocation( program, FRAGMENT_UNIFORM_ARRAY_NAME );
-		
 		assert( prog.vertexUniformArray != -1 || vertexShaderIndex < 0 || vertexShaders[vertexShaderIndex].uniforms.Num() == 0 );
 		assert( prog.fragmentUniformArray != -1 || fragmentShaderIndex < 0 || fragmentShaders[fragmentShaderIndex].uniforms.Num() == 0 );
 	}
@@ -2201,11 +2201,13 @@ void idRenderProgManager::LoadGLSLProgram( const int programIndex, const int ver
 	if( glConfig.gpuSkinningAvailable )
 	{
 		// get the uniform buffer binding for skinning joint matrices
+#if !defined(USE_GLES3) && !defined(USE_GLES2)
 		GLint blockIndex = glGetUniformBlockIndex( program, "matrices_ubo" );
 		if( blockIndex != -1 )
 		{
 			glUniformBlockBinding( program, blockIndex, 0 );
 		}
+#endif
 	}
 	// RB end
 	

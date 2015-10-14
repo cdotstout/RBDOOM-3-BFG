@@ -308,16 +308,20 @@ void idImage::SetTexParameters()
 			break;
 		case TR_CLAMP_TO_ZERO:
 		{
+#if !defined(USE_GLES3) && !defined(USE_GLES2)
 			float color[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
 			glTexParameterfv( target, GL_TEXTURE_BORDER_COLOR, color );
+#endif
 			glTexParameterf( target, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER );
 			glTexParameterf( target, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER );
 		}
 		break;
 		case TR_CLAMP_TO_ZERO_ALPHA:
 		{
+#if !defined(USE_GLES3) && !defined(USE_GLES2)
 			float color[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
 			glTexParameterfv( target, GL_TEXTURE_BORDER_COLOR, color );
+#endif
 			glTexParameterf( target, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER );
 			glTexParameterf( target, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER );
 		}
@@ -334,8 +338,10 @@ void idImage::SetTexParameters()
 	if( opts.format == FMT_SHADOW_ARRAY )
 	{
 		//glTexParameteri( target, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE );
+#if !defined(USE_GLES3) && !defined(USE_GLES2)
 		glTexParameteri( target, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_R_TO_TEXTURE );
 		glTexParameteri( target, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL );
+#endif
 	}
 }
 

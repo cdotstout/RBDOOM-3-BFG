@@ -192,9 +192,9 @@ idRenderWorldLocal::~idRenderWorldLocal()
 	}
 	
 	// free up the debug lines, polys, and text
-	RB_ClearDebugPolygons( 0 );
+	/*RB_ClearDebugPolygons( 0 );
 	RB_ClearDebugLines( 0 );
-	RB_ClearDebugText( 0 );
+	RB_ClearDebugText( 0 );*/
 }
 
 /*
@@ -1958,8 +1958,8 @@ idRenderWorldLocal::DebugClearLines
 */
 void idRenderWorldLocal::DebugClearLines( int time )
 {
-	RB_ClearDebugLines( time );
-	RB_ClearDebugText( time );
+	/*RB_ClearDebugLines( time );
+	RB_ClearDebugText( time );*/
 }
 
 /*
@@ -1969,7 +1969,7 @@ idRenderWorldLocal::DebugLine
 */
 void idRenderWorldLocal::DebugLine( const idVec4& color, const idVec3& start, const idVec3& end, const int lifetime, const bool depthTest )
 {
-	RB_AddDebugLine( color, start, end, lifetime, depthTest );
+	//RB_AddDebugLine( color, start, end, lifetime, depthTest );
 }
 
 /*
@@ -2244,7 +2244,7 @@ idRenderWorldLocal::DebugClearPolygons
 */
 void idRenderWorldLocal::DebugClearPolygons( int time )
 {
-	RB_ClearDebugPolygons( time );
+	//RB_ClearDebugPolygons( time );
 }
 
 /*
@@ -2254,7 +2254,7 @@ idRenderWorldLocal::DebugPolygon
 */
 void idRenderWorldLocal::DebugPolygon( const idVec4& color, const idWinding& winding, const int lifeTime, const bool depthTest )
 {
-	RB_AddDebugPolygon( color, winding, lifeTime, depthTest );
+	//RB_AddDebugPolygon( color, winding, lifeTime, depthTest );
 }
 
 /*
@@ -2304,7 +2304,7 @@ idRenderWorldLocal::DrawTextLength
 */
 float idRenderWorldLocal::DrawTextLength( const char* text, float scale, int len )
 {
-	return RB_DrawTextLength( text, scale, len );
+	return 1;//RB_DrawTextLength( text, scale, len );
 }
 
 /*
@@ -2317,7 +2317,7 @@ idRenderWorldLocal::DrawText
 */
 void idRenderWorldLocal::DrawText( const char* text, const idVec3& origin, float scale, const idVec4& color, const idMat3& viewAxis, const int align, const int lifetime, const bool depthTest )
 {
-	RB_AddDebugText( text, origin, scale, color, viewAxis, align, lifetime, depthTest );
+	//RB_AddDebugText( text, origin, scale, color, viewAxis, align, lifetime, depthTest );
 }
 
 /*

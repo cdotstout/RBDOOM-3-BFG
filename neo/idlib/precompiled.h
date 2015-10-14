@@ -29,6 +29,10 @@ If you have questions concerning this license or the applicable additional terms
 #ifndef __PRECOMPILED_H__
 #define __PRECOMPILED_H__
 
+#ifdef MOJO
+#define USE_GLES3 1
+#endif
+
 #include "sys/sys_defines.h"
 #include "sys/sys_builddefines.h"
 #include "sys/sys_includes.h"
@@ -86,7 +90,16 @@ const int MAX_EXPRESSION_REGISTERS = 4096;
 // renderer
 
 // RB: replaced QGL with GLEW
+#ifdef MOJO
+#define GL_GLEXT_PROTOTYPES
+#include <GLES3/gl3.h>
+#include <GLES2/gl2ext.h>
+// The code references many non GLES defines
+#include <GL/defines.h>
+#else
 #include <GL/glew.h>
+#endif
+
 // RB end
 #include "../renderer/Cinematic.h"
 #include "../renderer/Material.h"
