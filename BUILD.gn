@@ -6,13 +6,14 @@ import("//mojo/public/mojo_application.gni")
 
 config("configuration") {
   include_dirs = [
-    "./neo",
-    "./neo/libs/glew/include",
-    "./neo/idlib",
-    "./neo/libs/jpeg-6",
-    "./neo/libs/timidity",
-    "./neo/libs/zlib",
-    "./neo/libs/zlib/minizip",
+    "neo",
+    "neo/libs/glew/include",
+    "neo/idlib",
+    "neo/libs/jpeg-6",
+    "neo/libs/png",
+    "neo/libs/timidity",
+    "neo/libs/zlib",
+    "neo/libs/zlib/minizip",
     "//third_party/sdl/include",
   ]
 

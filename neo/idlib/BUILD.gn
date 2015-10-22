@@ -2,33 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-config("configuration") {
-  include_dirs = [
-    "sys/",
-    "containers",
-    ".",
-    "../libs/glew/include",
-  ]
-
-  cflags_cc = [
-    "-frtti",
-    "-fexceptions",
-  ]
-
-  cflags = [
-    "-pipe",
-    "-w",
-    "-DUSE_INTRINSICS",
-    "-DUSE_EXCEPTIONS",
-    "-DUSE_DOOMCLASSIC",
-    "-D__IDLIB__",
-    "-D__DOOM_DLL__",
-  ]
-}
-
-static_library("idlib") {
-  configs += [ ":configuration" ]
-  #configs -= [ "//build/config/clang:find_bad_constructs" ]
+source_set("idlib") {
+  configs += [ "//third_party/doom3bfg:configuration" ]
 
   deps = [
     "//mojo/public/c/gpu",

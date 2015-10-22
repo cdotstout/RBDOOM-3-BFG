@@ -273,7 +273,7 @@ Sys_Yield
 */
 void Sys_Yield()
 {
-#if defined(__ANDROID__) || defined(__APPLE__)
+#if defined(__ANDROID__) || defined(__APPLE__) || defined(MOJO)
 	sched_yield();
 #else
 	pthread_yield();
