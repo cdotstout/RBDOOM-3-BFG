@@ -272,22 +272,32 @@ void idGuiModel::EmitFullScreen()
 	viewDef->projectionMatrix[0 * 4 + 3] = 0.0f;
 	
 	viewDef->projectionMatrix[1 * 4 + 0] = 0.0f;
+#if defined( ID_VULKAN )
+	viewDef->projectionMatrix[1 * 4 + 1] = 2.0f / renderSystem->GetVirtualHeight();
+#else
 	viewDef->projectionMatrix[1 * 4 + 1] = -2.0f / renderSystem->GetVirtualHeight();
+#endif
 	viewDef->projectionMatrix[1 * 4 + 2] = 0.0f;
 	viewDef->projectionMatrix[1 * 4 + 3] = 0.0f;
 	
 	viewDef->projectionMatrix[2 * 4 + 0] = 0.0f;
 	viewDef->projectionMatrix[2 * 4 + 1] = 0.0f;
-	viewDef->projectionMatrix[2 * 4 + 2] = -2.0f;
+	viewDef->projectionMatrix[2 * 4 + 2] = -1.0f;
 	viewDef->projectionMatrix[2 * 4 + 3] = 0.0f;
 	
 	viewDef->projectionMatrix[3 * 4 + 0] = -1.0f;
+#if defined(ID_VULKAN)
+	viewDef->projectionMatrix[3 * 4 + 1] = -1.0f;
+#else
 	viewDef->projectionMatrix[3 * 4 + 1] = 1.0f;
-	viewDef->projectionMatrix[3 * 4 + 2] = -1.0f;
+#endif
+	viewDef->projectionMatrix[3 * 4 + 2] = 0;
 	viewDef->projectionMatrix[3 * 4 + 3] = 1.0f;
 	
 	// make a tech5 renderMatrix for faster culling
 	idRenderMatrix::Transpose( *( idRenderMatrix* )viewDef->projectionMatrix, viewDef->projectionRenderMatrix );
+
+	idRenderMatrix& mat =  *( idRenderMatrix* )viewDef->projectionMatrix;
 	
 	viewDef->worldSpace.modelMatrix[0 * 4 + 0] = 1.0f;
 	viewDef->worldSpace.modelMatrix[1 * 4 + 1] = 1.0f;

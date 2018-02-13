@@ -29,6 +29,8 @@ If you have questions concerning this license or the applicable additional terms
 #include "precompiled.h"
 #pragma hdrstop
 
+#if !defined(ID_VULKAN)
+
 #include "RenderCommon.h"
 #include "Framebuffer.h"
 
@@ -522,3 +524,5 @@ void Framebuffer::Check()
 	
 	glBindFramebuffer( GL_FRAMEBUFFER, prev );
 }
+
+#endif

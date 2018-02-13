@@ -423,8 +423,12 @@ void idRenderModelOverlay::CreateOverlay( const idRenderModel* model, const idPl
 			continue;
 		}
 		
+#if defined(ID_VULKAN)
+		if (false)
+#else
 		// RB: added check wether GPU skinning is available at all
 		if( tri->staticModelWithJoints != NULL && r_useGPUSkinning.GetBool() && glConfig.gpuSkinningAvailable )
+#endif
 		{
 			R_OverlayPointCullSkinned( cullBits.Ptr(), texCoordS.Ptr(), texCoordT.Ptr(), localTextureAxis, tri->verts, tri->numVerts, tri->staticModelWithJoints->jointsInverted );
 		}

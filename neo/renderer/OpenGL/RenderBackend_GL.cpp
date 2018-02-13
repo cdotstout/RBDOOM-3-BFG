@@ -931,27 +931,6 @@ void idRenderBackend::GL_Clear( bool color, bool depth, bool stencil, byte stenc
 
 
 /*
-=================
-idRenderBackend::GL_GetCurrentState
-=================
-*/
-uint64 idRenderBackend::GL_GetCurrentState() const
-{
-	return tr.backend.glStateBits;
-}
-
-/*
-========================
-idRenderBackend::GL_GetCurrentStateMinusStencil
-========================
-*/
-uint64 idRenderBackend::GL_GetCurrentStateMinusStencil() const
-{
-	return GL_GetCurrentState() & ~( GLS_STENCIL_OP_BITS | GLS_STENCIL_FUNC_BITS | GLS_STENCIL_FUNC_REF_BITS | GLS_STENCIL_FUNC_MASK_BITS );
-}
-
-
-/*
 =============
 idRenderBackend::CheckCVars
 

@@ -40,7 +40,6 @@ FRAME MEMORY ALLOCATION
 ==========================================================================================
 */
 
-static const unsigned int NUM_FRAME_DATA = 2;
 static const unsigned int FRAME_ALLOC_ALIGNMENT = 128;
 static const unsigned int MAX_FRAME_MEMORY = 64 * 1024 * 1024;	// larger so that we can noclip on PC for dev purposes
 
@@ -123,6 +122,8 @@ R_InitFrameData
 */
 void R_InitFrameData()
 {
+	printf("R_InitFrameData\n");
+	
 	R_ShutdownFrameData();
 	
 	for( int i = 0; i < NUM_FRAME_DATA; i++ )

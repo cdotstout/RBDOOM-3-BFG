@@ -40,7 +40,7 @@ If you have questions concerning this license or the applicable additional terms
 
 #include <SDL.h>
 
-#include "renderer/tr_local.h"
+#include "renderer/RenderCommon.h"
 #include "sdl_local.h"
 #include "../posix/posix_public.h"
 
@@ -963,8 +963,8 @@ sysEvent_t Sys_GetEvent()
 						r_windowWidth.SetInteger( w );
 						r_windowHeight.SetInteger( h );
 						
-						glConfig.nativeScreenWidth = w;
-						glConfig.nativeScreenHeight = h;
+						// glConfig.nativeScreenWidth = w;
+						// glConfig.nativeScreenHeight = h;
 						break;
 					}
 					

@@ -29,13 +29,16 @@ If you have questions concerning this license or the applicable additional terms
 #ifndef __RENDERPROGS_H__
 #define __RENDERPROGS_H__
 
-
 static const int PC_ATTRIB_INDEX_VERTEX		= 0;
 static const int PC_ATTRIB_INDEX_NORMAL		= 2;
 static const int PC_ATTRIB_INDEX_COLOR		= 3;
 static const int PC_ATTRIB_INDEX_COLOR2		= 4;
 static const int PC_ATTRIB_INDEX_ST			= 8;
 static const int PC_ATTRIB_INDEX_TANGENT	= 9;
+
+#if defined( ID_VULKAN )
+static const int MAX_DESC_SETS				= 16384;
+#endif
 
 // This enum list corresponds to the global constant register indecies as defined in global.inc for all
 // shaders.  We used a shared pool to keeps things simple.  If something changes here then it also
@@ -154,18 +157,98 @@ enum renderParm_t
 	RENDERPARM_SHADOW_MATRIX_5_W,
 	// RB end
 	
-	RENDERPARM_TOTAL,
-	RENDERPARM_USER = 128,
+	RENDERPARM_USER0,
+	RENDERPARM_USER1,
+	RENDERPARM_USER2,
+	RENDERPARM_USER3,
+	RENDERPARM_USER4,
+	RENDERPARM_USER5,
+	RENDERPARM_USER6,
+	RENDERPARM_USER7,
+
+	RENDERPARM_TOTAL
 };
 
+extern const char * GLSLParmNames[];
 
-struct glslUniformLocation_t
+enum rpStage_t 
 {
-	int		parmIndex;
-	GLint	uniformIndex;
+	SHADER_STAGE_VERTEX		= BIT( 0 ),
+	SHADER_STAGE_FRAGMENT	= BIT( 1 ),
+	SHADER_STAGE_ALL		= SHADER_STAGE_VERTEX | SHADER_STAGE_FRAGMENT
 };
 
+enum shaderFeature_t
+{
+	USE_GPU_SKINNING,
+	LIGHT_POINT,
+	LIGHT_PARALLEL,
+	BRIGHTPASS,
+	HDR_DEBUG,
+	USE_SRGB,
+	
+	MAX_SHADER_MACRO_NAMES,
+};
 
+#if defined(ID_VULKAN)
+enum rpBinding_t {
+	BINDING_TYPE_UNIFORM_BUFFER,
+	BINDING_TYPE_SAMPLER,
+	BINDING_TYPE_MAX
+};
+
+struct shader_t {
+	shader_t() : module( VK_NULL_HANDLE ) {}
+
+	idStr					name;
+	rpStage_t				stage;
+	VkShaderModule			module;
+	idList< rpBinding_t >	bindings;
+	idList< int >			parmIndices;
+};
+
+enum vertexLayoutType_t {
+	LAYOUT_UNKNOWN = -1,
+	LAYOUT_DRAW_VERT,
+	LAYOUT_DRAW_SHADOW_VERT,
+	LAYOUT_DRAW_SHADOW_VERT_SKINNED,
+	NUM_VERTEX_LAYOUTS
+};
+
+struct renderProg_t {
+	renderProg_t() :
+					usesJoints( false ),
+					optionalSkinning( false ),
+					vertexShaderIndex( -1 ),
+					fragmentShaderIndex( -1 ),
+					vertexLayoutType( LAYOUT_DRAW_VERT ),
+					pipelineLayout( VK_NULL_HANDLE ),
+					descriptorSetLayout( VK_NULL_HANDLE ) {}
+
+	struct pipelineState_t {
+		pipelineState_t() : 
+					stateBits( 0 ),
+					pipeline( VK_NULL_HANDLE ) {
+		}
+
+		uint64		stateBits;
+		VkPipeline	pipeline;
+	};
+
+	VkPipeline GetPipeline( uint64 stateBits, VkShaderModule vertexShader, VkShaderModule fragmentShader );
+
+	idStr						name;
+	bool						usesJoints;
+	bool						optionalSkinning;
+	int							vertexShaderIndex;
+	int							fragmentShaderIndex;
+	vertexLayoutType_t			vertexLayoutType;
+	VkPipelineLayout			pipelineLayout;
+	VkDescriptorSetLayout		descriptorSetLayout;
+	idList< rpBinding_t >		bindings;
+	idList< pipelineState_t >	pipelines;
+};
+#endif
 
 /*
 ================================================================================================
@@ -176,21 +259,37 @@ class idRenderProgManager
 {
 public:
 	idRenderProgManager();
-	virtual ~idRenderProgManager();
+	~idRenderProgManager();
 	
 	void	Init();
 	void	Shutdown();
 	
+	const idVec4 & GetRenderParm( renderParm_t rp );
 	void	SetRenderParm( renderParm_t rp, const float* value );
 	void	SetRenderParms( renderParm_t rp, const float* values, int numValues );
 	
-	int		FindVertexShader( const char* name );
-	int		FindFragmentShader( const char* name );
+	int		FindShader( const char * name, rpStage_t stage );
+
+#if defined(ID_VULKAN)
+	void	StartFrame();
+
+	void 	BindProgram(int index);
+	const renderProg_t & GetCurrentRenderProg() const 
+	{ 
+		return m_renderProgs[ currentRenderProgram ]; 
+	}
+	void	CommitCurrent( uint64 stateBits, VkCommandBuffer commandBuffer );
+	int		FindProgram( const char * name, int vIndex, int fIndex );
+
+	void	ClearPipelines();
+	void	PrintPipelineStates();
 	
+#else
 	// RB: added progIndex to handle many custom renderprogs
 	void	BindShader( int progIndex, int vIndex, int fIndex, bool builtin );
 	// RB end
-	
+#endif
+
 	void	BindShader_GUI( )
 	{
 		BindShader_Builtin( BUILTIN_GUI );
@@ -201,6 +300,7 @@ public:
 		BindShader_Builtin( BUILTIN_COLOR );
 	}
 	
+#if !defined(ID_VULKAN)
 	// RB begin
 	void	BindShader_ColorSkinned( )
 	{
@@ -232,7 +332,8 @@ public:
 		BindShader_Builtin( BUILTIN_SMALL_GEOMETRY_BUFFER_SKINNED );
 	}
 	// RB end
-	
+#endif
+
 	void	BindShader_Texture( )
 	{
 		BindShader_Builtin( BUILTIN_TEXTURED );
@@ -243,11 +344,13 @@ public:
 		BindShader_Builtin( BUILTIN_TEXTURE_VERTEXCOLOR );
 	};
 	
+#if !defined(ID_VULKAN)	
 	void	BindShader_TextureVertexColor_sRGB()
 	{
 		BindShader_Builtin( BUILTIN_TEXTURE_VERTEXCOLOR_SRGB );
 	};
-	
+#endif
+
 	void	BindShader_TextureVertexColorSkinned()
 	{
 		BindShader_Builtin( BUILTIN_TEXTURE_VERTEXCOLOR_SKINNED );
@@ -278,6 +381,7 @@ public:
 		BindShader_Builtin( BUILTIN_INTERACTION_AMBIENT_SKINNED );
 	}
 	
+#if !defined(ID_VULKAN)
 	// RB begin
 	void	BindShader_Interaction_ShadowMapping_Spot()
 	{
@@ -309,7 +413,8 @@ public:
 		BindShader_Builtin( BUILTIN_INTERACTION_SHADOW_MAPPING_PARALLEL_SKINNED );
 	}
 	// RB end
-	
+#endif
+
 	void	BindShader_SimpleShade()
 	{
 		BindShader_Builtin( BUILTIN_SIMPLESHADE );
@@ -398,6 +503,7 @@ public:
 		BindShader_Builtin( BUILTIN_WOBBLESKY );
 	}
 	
+#if !defined(ID_VULKAN)
 	void	BindShader_StereoDeGhost()
 	{
 		BindShader_Builtin( BUILTIN_STEREO_DEGHOST );
@@ -502,7 +608,8 @@ public:
 	{
 		BindShader_Builtin( BUILTIN_DEEP_GBUFFER_RADIOSITY_BLUR_AND_OUTPUT );
 	}
-	
+#endif
+
 #if 0
 	void	BindShader_ZCullReconstruct()
 	{
@@ -520,6 +627,7 @@ public:
 		BindShader_Builtin( BUILTIN_BINK_GUI );
 	}
 	
+#if !defined(ID_VULKAN)
 	void	BindShader_MotionBlur()
 	{
 		BindShader_Builtin( BUILTIN_MOTION_BLUR );
@@ -530,66 +638,48 @@ public:
 		BindShader_Builtin( BUILTIN_DEBUG_SHADOWMAP );
 	}
 	// RB end
-	
+#endif
+
 	// the joints buffer should only be bound for vertex programs that use joints
-	bool		ShaderUsesJoints() const
-	{
-		return vertexShaders[currentVertexShader].usesJoints;
-	}
+	bool		ShaderUsesJoints() const;
 	// the rpEnableSkinning render parm should only be set for vertex programs that use it
-	bool		ShaderHasOptionalSkinning() const
-	{
-		return vertexShaders[currentVertexShader].optionalSkinning;
-	}
-	
-	// unbind the currently bound render program
-	void		Unbind();
-	
-	// RB begin
-	bool		IsShaderBound() const;
-	// RB end
-	
+	bool		ShaderHasOptionalSkinning() const;
+			
 	// this should only be called via the reload shader console command
 	void		LoadAllShaders();
 	void		KillAllShaders();
+
+	// unbind the currently bound render program
+	void		Unbind();
 	
-	static const int	MAX_GLSL_USER_PARMS = 8;
-	const char*	GetGLSLParmName( int rp ) const;
-	int			GetGLSLCurrentProgram() const
-	{
-		return currentRenderProgram;
-	}
-	void		SetUniformValue( const renderParm_t rp, const float* value );
-	void		CommitUniforms();
-	int			FindGLSLProgram( const char* name, int vIndex, int fIndex );
-	void		ZeroUniforms();
-	
-protected:
-	void	LoadVertexShader( int index );
-	void	LoadFragmentShader( int index );
-	
-	enum
+protected:	
+	enum rpBuiltIn_t
 	{
 		BUILTIN_GUI,
 		BUILTIN_COLOR,
 		// RB begin
+#if !defined(ID_VULKAN)
 		BUILTIN_COLOR_SKINNED,
 		BUILTIN_VERTEX_COLOR,
 		BUILTIN_AMBIENT_LIGHTING,
 		BUILTIN_AMBIENT_LIGHTING_SKINNED,
 		BUILTIN_SMALL_GEOMETRY_BUFFER,
 		BUILTIN_SMALL_GEOMETRY_BUFFER_SKINNED,
+#endif
 		// RB end
 		BUILTIN_SIMPLESHADE,
 		BUILTIN_TEXTURED,
 		BUILTIN_TEXTURE_VERTEXCOLOR,
+#if !defined(ID_VULKAN)
 		BUILTIN_TEXTURE_VERTEXCOLOR_SRGB,
+#endif
 		BUILTIN_TEXTURE_VERTEXCOLOR_SKINNED,
 		BUILTIN_TEXTURE_TEXGEN_VERTEXCOLOR,
 		BUILTIN_INTERACTION,
 		BUILTIN_INTERACTION_SKINNED,
 		BUILTIN_INTERACTION_AMBIENT,
 		BUILTIN_INTERACTION_AMBIENT_SKINNED,
+#if !defined(ID_VULKAN)
 		// RB begin
 		BUILTIN_INTERACTION_SHADOW_MAPPING_SPOT,
 		BUILTIN_INTERACTION_SHADOW_MAPPING_SPOT_SKINNED,
@@ -597,6 +687,7 @@ protected:
 		BUILTIN_INTERACTION_SHADOW_MAPPING_POINT_SKINNED,
 		BUILTIN_INTERACTION_SHADOW_MAPPING_PARALLEL,
 		BUILTIN_INTERACTION_SHADOW_MAPPING_PARALLEL_SKINNED,
+#endif
 		// RB end
 		BUILTIN_ENVIRONMENT,
 		BUILTIN_ENVIRONMENT_SKINNED,
@@ -615,6 +706,7 @@ protected:
 		BUILTIN_FOG_SKINNED,
 		BUILTIN_SKYBOX,
 		BUILTIN_WOBBLESKY,
+#if !defined(ID_VULKAN)
 		BUILTIN_POSTPROCESS,
 		// RB begin
 		BUILTIN_SCREEN,
@@ -637,37 +729,93 @@ protected:
 		BUILTIN_DEEP_GBUFFER_RADIOSITY_SSGI,
 		BUILTIN_DEEP_GBUFFER_RADIOSITY_BLUR,
 		BUILTIN_DEEP_GBUFFER_RADIOSITY_BLUR_AND_OUTPUT,
+
 		// RB end
 		BUILTIN_STEREO_DEGHOST,
 		BUILTIN_STEREO_WARP,
 		BUILTIN_ZCULL_RECONSTRUCT,
+#endif
 		BUILTIN_BINK,
 		BUILTIN_BINK_GUI,
+
+#if !defined(ID_VULKAN)
 		BUILTIN_STEREO_INTERLACE,
 		BUILTIN_MOTION_BLUR,
 		
 		BUILTIN_DEBUG_SHADOWMAP,
-		
+#endif
 		MAX_BUILTINS
 	};
+
+private:
 	int builtinShaders[MAX_BUILTINS];
+	int	currentRenderProgram;
+	idStaticList< idVec4, RENDERPARM_TOTAL > uniforms;
+
+#if defined(ID_VULKAN)
+	void	LoadShader( int index );
+	void	LoadShader( shader_t & shader );
+
+	void	AllocParmBlockBuffer( const idList< int > & parmIndices, idUniformBuffer & ubo );
+
+	void BindShader_Builtin( int i )
+	{
+		BindProgram(i);
+	}
+
+	idList< shader_t, TAG_RENDER >	m_shaders;
+	idList< renderProg_t, TAG_RENDER > m_renderProgs;
+
+	int					m_counter;
+	int					m_currentData;
+	int					m_currentDescSet;
+	int					m_currentParmBufferOffset;
+	VkDescriptorPool	m_descriptorPools[ NUM_FRAME_DATA ];
+	VkDescriptorSet		m_descriptorSets[ NUM_FRAME_DATA ][ MAX_DESC_SETS ];
+
+	idUniformBuffer *	m_parmBuffers[ NUM_FRAME_DATA ];
+
+#else
+private:
 	void BindShader_Builtin( int i )
 	{
 		BindShader( -1, builtinShaders[i], builtinShaders[i], true );
 	}
-	
-	enum shaderFeature_t
+
+	static const int	MAX_GLSL_USER_PARMS = 8;
+
+	int		FindVertexShader( const char* name ) override;
+	int		FindFragmentShader( const char* name ) override;
+
+	const char*	GetGLSLParmName( int rp ) const;
+	int			GetGLSLCurrentProgram() const
 	{
-		USE_GPU_SKINNING,
-		LIGHT_POINT,
-		LIGHT_PARALLEL,
-		BRIGHTPASS,
-		HDR_DEBUG,
-		USE_SRGB,
-		
-		MAX_SHADER_MACRO_NAMES,
-	};
+		return currentRenderProgram;
+	}
+	void		SetUniformValue( const renderParm_t rp, const float* value );
+	void		CommitUniforms();
+	int			FindGLSLProgram( const char* name, int vIndex, int fIndex );
+	void		ZeroUniforms();
+
+	bool		ShaderUsesJoints() override
+	{
+		return vertexShaders[currentVertexShader].usesJoints;
+	}
+	// the rpEnableSkinning render parm should only be set for vertex programs that use it
+	bool		ShaderHasOptionalSkinning() const override
+	{
+		return vertexShaders[currentVertexShader].optionalSkinning;
+	}
+
+	void		LoadAllShaders() override;
+	void		KillAllShaders() override;
+
+	void	LoadVertexShader( int index );
+	void	LoadFragmentShader( int index );
 	
+	// unbind the currently bound render program
+	void		Unbind();
+
 	static const char* GLSLMacroNames[MAX_SHADER_MACRO_NAMES];
 	const char*	GetGLSLMacroName( shaderFeature_t sf ) const;
 	
@@ -715,15 +863,14 @@ protected:
 		GLint		fragmentUniformArray;
 		idList<glslUniformLocation_t> uniformLocations;
 	};
-	int	currentRenderProgram;
 	idList<glslProgram_t, TAG_RENDER> glslPrograms;
-	idStaticList < idVec4, RENDERPARM_USER + MAX_GLSL_USER_PARMS > glslUniforms;
 	
 	
 	int				currentVertexShader;
 	int				currentFragmentShader;
 	idList<vertexShader_t, TAG_RENDER> vertexShaders;
 	idList<fragmentShader_t, TAG_RENDER> fragmentShaders;
+#endif /* ID_VULKAN */	
 };
 
 extern idRenderProgManager renderProgManager;

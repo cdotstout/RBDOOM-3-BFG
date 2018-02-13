@@ -619,9 +619,13 @@ localTrace_t R_LocalTrace( const idVec3& start, const idVec3& end, const float r
 	byte* cullBits = ( byte* ) _alloca16( ALIGN( tri->numVerts, 4 ) );	// round up to a multiple of 4 for SIMD
 	byte totalOr = 0;
 	
+#if defined(ID_VULKAN)
+	const idJointMat* joints = NULL;
+#else
 	// RB: added check wether GPU skinning is available at all
 	const idJointMat* joints = ( tri->staticModelWithJoints != NULL && r_useGPUSkinning.GetBool() && glConfig.gpuSkinningAvailable ) ? tri->staticModelWithJoints->jointsInverted : NULL;
 	// RB end
+#endif
 	
 	if( joints != NULL )
 	{

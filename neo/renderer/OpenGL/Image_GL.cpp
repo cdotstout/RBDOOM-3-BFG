@@ -901,3 +901,20 @@ void idImage::Resize( int width, int height )
 	opts.height = height;
 	AllocImage();
 }
+
+/*
+========================
+idImage::SetSamplerState
+========================
+*/
+void idImage::SetSamplerState( textureFilter_t tf, textureRepeat_t tr )
+{
+	if( tf == filter && tr == repeat )
+	{
+		return;
+	}
+	filter = tf;
+	repeat = tr;
+	glBindTexture( ( opts.textureType == TT_CUBIC ) ? GL_TEXTURE_CUBE_MAP : GL_TEXTURE_2D, texnum );
+	SetTexParameters();
+}

@@ -44,77 +44,31 @@ idCVar r_useLightStencilSelect( "r_useLightStencilSelect", "0", CVAR_RENDERER | 
 
 extern idCVar stereoRender_swapEyes;
 
-
-/*
-================
-SetVertexParm
-================
-*/
-static ID_INLINE void SetVertexParm( renderParm_t rp, const float* value )
-{
-	renderProgManager.SetUniformValue( rp, value );
-}
-
-/*
-================
-SetVertexParms
-================
-*/
-static ID_INLINE void SetVertexParms( renderParm_t rp, const float* value, int num )
-{
-	for( int i = 0; i < num; i++ )
-	{
-		renderProgManager.SetUniformValue( ( renderParm_t )( rp + i ), value + ( i * 4 ) );
-	}
-}
-
-/*
-================
-SetFragmentParm
-================
-*/
-static ID_INLINE void SetFragmentParm( renderParm_t rp, const float* value )
-{
-	renderProgManager.SetUniformValue( rp, value );
-}
-
 /*
 ====================
 PrintState
 ====================
 */
-#if 0
-void PrintState( uint64 stateBits, uint64* stencilBits )
-{
-	if( renderLog.Active() == 0 )
-	{
+void PrintState( uint64 stateBits ) {
+	if ( renderLog.Active() == 0 ) {
 		return;
 	}
-	
+
 	renderLog.OpenBlock( "GL_State" );
-	
+
 	// culling
 	renderLog.Printf( "Culling: " );
-	switch( stateBits & GLS_CULL_BITS )
-	{
-		case GLS_CULL_FRONTSIDED:
-			renderLog.Printf_NoIndent( "FRONTSIDED -> BACK" );
-			break;
-		case GLS_CULL_BACKSIDED:
-			renderLog.Printf_NoIndent( "BACKSIDED -> FRONT" );
-			break;
-		case GLS_CULL_TWOSIDED:
-			renderLog.Printf_NoIndent( "TWOSIDED" );
-			break;
-		default:
-			renderLog.Printf_NoIndent( "NA" );
-			break;
+	switch ( stateBits & GLS_CULL_BITS ) {
+		case GLS_CULL_FRONTSIDED:	renderLog.Printf_NoIndent( "FRONTSIDED -> BACK" ); break;
+		case GLS_CULL_BACKSIDED:	renderLog.Printf_NoIndent( "BACKSIDED -> FRONT" ); break;
+		case GLS_CULL_TWOSIDED:		renderLog.Printf_NoIndent( "TWOSIDED" ); break;
+		default:					renderLog.Printf_NoIndent( "NA" ); break;
 	}
 	renderLog.Printf_NoIndent( "\n" );
-	
+
 	// polygon mode
 	renderLog.Printf( "PolygonMode: %s\n", ( stateBits & GLS_POLYMODE_LINE ) ? "LINE" : "FILL" );
-	
+
 	// color mask
 	renderLog.Printf( "ColorMask: " );
 	renderLog.Printf_NoIndent( ( stateBits & GLS_REDMASK ) ? "_" : "R" );
@@ -125,257 +79,122 @@ void PrintState( uint64 stateBits, uint64* stencilBits )
 	
 	// blend
 	renderLog.Printf( "Blend: src=" );
-	switch( stateBits & GLS_SRCBLEND_BITS )
-	{
-		case GLS_SRCBLEND_ZERO:
-			renderLog.Printf_NoIndent( "ZERO" );
-			break;
-		case GLS_SRCBLEND_ONE:
-			renderLog.Printf_NoIndent( "ONE" );
-			break;
-		case GLS_SRCBLEND_DST_COLOR:
-			renderLog.Printf_NoIndent( "DST_COLOR" );
-			break;
-		case GLS_SRCBLEND_ONE_MINUS_DST_COLOR:
-			renderLog.Printf_NoIndent( "ONE_MINUS_DST_COLOR" );
-			break;
-		case GLS_SRCBLEND_SRC_ALPHA:
-			renderLog.Printf_NoIndent( "SRC_ALPHA" );
-			break;
-		case GLS_SRCBLEND_ONE_MINUS_SRC_ALPHA:
-			renderLog.Printf_NoIndent( "ONE_MINUS_SRC_ALPHA" );
-			break;
-		case GLS_SRCBLEND_DST_ALPHA:
-			renderLog.Printf_NoIndent( "DST_ALPHA" );
-			break;
-		case GLS_SRCBLEND_ONE_MINUS_DST_ALPHA:
-			renderLog.Printf_NoIndent( "ONE_MINUS_DST_ALPHA" );
-			break;
-		default:
-			renderLog.Printf_NoIndent( "NA" );
-			break;
+	switch ( stateBits & GLS_SRCBLEND_BITS ) {
+		case GLS_SRCBLEND_ZERO:					renderLog.Printf_NoIndent( "ZERO" ); break;
+		case GLS_SRCBLEND_ONE:					renderLog.Printf_NoIndent( "ONE" ); break;
+		case GLS_SRCBLEND_DST_COLOR:			renderLog.Printf_NoIndent( "DST_COLOR" ); break;
+		case GLS_SRCBLEND_ONE_MINUS_DST_COLOR:	renderLog.Printf_NoIndent( "ONE_MINUS_DST_COLOR" ); break;
+		case GLS_SRCBLEND_SRC_ALPHA:			renderLog.Printf_NoIndent( "SRC_ALPHA" ); break;
+		case GLS_SRCBLEND_ONE_MINUS_SRC_ALPHA:	renderLog.Printf_NoIndent( "ONE_MINUS_SRC_ALPHA" ); break;
+		case GLS_SRCBLEND_DST_ALPHA:			renderLog.Printf_NoIndent( "DST_ALPHA" ); break;
+		case GLS_SRCBLEND_ONE_MINUS_DST_ALPHA:	renderLog.Printf_NoIndent( "ONE_MINUS_DST_ALPHA" ); break;
+		default:								renderLog.Printf_NoIndent( "NA" ); break;
 	}
 	renderLog.Printf_NoIndent( ", dst=" );
-	switch( stateBits & GLS_DSTBLEND_BITS )
-	{
-		case GLS_DSTBLEND_ZERO:
-			renderLog.Printf_NoIndent( "ZERO" );
-			break;
-		case GLS_DSTBLEND_ONE:
-			renderLog.Printf_NoIndent( "ONE" );
-			break;
-		case GLS_DSTBLEND_SRC_COLOR:
-			renderLog.Printf_NoIndent( "SRC_COLOR" );
-			break;
-		case GLS_DSTBLEND_ONE_MINUS_SRC_COLOR:
-			renderLog.Printf_NoIndent( "ONE_MINUS_SRC_COLOR" );
-			break;
-		case GLS_DSTBLEND_SRC_ALPHA:
-			renderLog.Printf_NoIndent( "SRC_ALPHA" );
-			break;
-		case GLS_DSTBLEND_ONE_MINUS_SRC_ALPHA:
-			renderLog.Printf_NoIndent( "ONE_MINUS_SRC_ALPHA" );
-			break;
-		case GLS_DSTBLEND_DST_ALPHA:
-			renderLog.Printf_NoIndent( "DST_ALPHA" );
-			break;
-		case GLS_DSTBLEND_ONE_MINUS_DST_ALPHA:
-			renderLog.Printf_NoIndent( "ONE_MINUS_DST_ALPHA" );
-			break;
-		default:
-			renderLog.Printf_NoIndent( "NA" );
+	switch ( stateBits & GLS_DSTBLEND_BITS ) {
+		case GLS_DSTBLEND_ZERO:					renderLog.Printf_NoIndent( "ZERO" ); break;
+		case GLS_DSTBLEND_ONE:					renderLog.Printf_NoIndent( "ONE" ); break;
+		case GLS_DSTBLEND_SRC_COLOR:			renderLog.Printf_NoIndent( "SRC_COLOR" ); break;
+		case GLS_DSTBLEND_ONE_MINUS_SRC_COLOR:	renderLog.Printf_NoIndent( "ONE_MINUS_SRC_COLOR" ); break;
+		case GLS_DSTBLEND_SRC_ALPHA:			renderLog.Printf_NoIndent( "SRC_ALPHA" ); break;
+		case GLS_DSTBLEND_ONE_MINUS_SRC_ALPHA:	renderLog.Printf_NoIndent( "ONE_MINUS_SRC_ALPHA" ); break;
+		case GLS_DSTBLEND_DST_ALPHA:			renderLog.Printf_NoIndent( "DST_ALPHA" ); break;
+		case GLS_DSTBLEND_ONE_MINUS_DST_ALPHA:	renderLog.Printf_NoIndent( "ONE_MINUS_DST_ALPHA" ); break;
+		default:								renderLog.Printf_NoIndent( "NA" );
 	}
 	renderLog.Printf_NoIndent( "\n" );
 	
 	// depth func
 	renderLog.Printf( "DepthFunc: " );
-	switch( stateBits & GLS_DEPTHFUNC_BITS )
-	{
-		case GLS_DEPTHFUNC_EQUAL:
-			renderLog.Printf_NoIndent( "EQUAL" );
-			break;
-		case GLS_DEPTHFUNC_ALWAYS:
-			renderLog.Printf_NoIndent( "ALWAYS" );
-			break;
-		case GLS_DEPTHFUNC_LESS:
-			renderLog.Printf_NoIndent( "LEQUAL" );
-			break;
-		case GLS_DEPTHFUNC_GREATER:
-			renderLog.Printf_NoIndent( "GEQUAL" );
-			break;
-		default:
-			renderLog.Printf_NoIndent( "NA" );
-			break;
+	switch ( stateBits & GLS_DEPTHFUNC_BITS ) {
+		case GLS_DEPTHFUNC_EQUAL:	renderLog.Printf_NoIndent( "EQUAL" ); break;
+		case GLS_DEPTHFUNC_ALWAYS:	renderLog.Printf_NoIndent( "ALWAYS" ); break;
+		case GLS_DEPTHFUNC_LESS:	renderLog.Printf_NoIndent( "LEQUAL" ); break;
+		case GLS_DEPTHFUNC_GREATER: renderLog.Printf_NoIndent( "GEQUAL" ); break;
+		default:					renderLog.Printf_NoIndent( "NA" ); break;
 	}
 	renderLog.Printf_NoIndent( "\n" );
 	
 	// depth mask
 	renderLog.Printf( "DepthWrite: %s\n", ( stateBits & GLS_DEPTHMASK ) ? "FALSE" : "TRUE" );
-	
+
 	renderLog.Printf( "DepthBounds: %s\n", ( stateBits & GLS_DEPTH_TEST_MASK ) ? "TRUE" : "FALSE" );
-	
+
 	// depth bias
 	renderLog.Printf( "DepthBias: %s\n", ( stateBits & GLS_POLYGON_OFFSET ) ? "TRUE" : "FALSE" );
-	
+
 	// stencil
-	auto printStencil = [&]( stencilFace_t face, uint64 bits, uint64 mask, uint64 ref )
-	{
+	auto printStencil = [&] ( stencilFace_t face, uint64 bits, uint64 mask, uint64 ref ) {
 		renderLog.Printf( "Stencil: %s, ", ( bits & ( GLS_STENCIL_FUNC_BITS | GLS_STENCIL_OP_BITS ) ) ? "ON" : "OFF" );
 		renderLog.Printf_NoIndent( "Face=" );
-		switch( face )
-		{
-			case STENCIL_FACE_FRONT:
-				renderLog.Printf_NoIndent( "FRONT" );
-				break;
-			case STENCIL_FACE_BACK:
-				renderLog.Printf_NoIndent( "BACK" );
-				break;
-			default:
-				renderLog.Printf_NoIndent( "BOTH" );
-				break;
+		switch ( face ) {
+			case STENCIL_FACE_FRONT: renderLog.Printf_NoIndent( "FRONT" ); break;
+			case STENCIL_FACE_BACK: renderLog.Printf_NoIndent( "BACK" ); break;
+			default: renderLog.Printf_NoIndent( "BOTH" ); break;
 		}
 		renderLog.Printf_NoIndent( ", Func=" );
-		switch( bits & GLS_STENCIL_FUNC_BITS )
-		{
-			case GLS_STENCIL_FUNC_NEVER:
-				renderLog.Printf_NoIndent( "NEVER" );
-				break;
-			case GLS_STENCIL_FUNC_LESS:
-				renderLog.Printf_NoIndent( "LESS" );
-				break;
-			case GLS_STENCIL_FUNC_EQUAL:
-				renderLog.Printf_NoIndent( "EQUAL" );
-				break;
-			case GLS_STENCIL_FUNC_LEQUAL:
-				renderLog.Printf_NoIndent( "LEQUAL" );
-				break;
-			case GLS_STENCIL_FUNC_GREATER:
-				renderLog.Printf_NoIndent( "GREATER" );
-				break;
-			case GLS_STENCIL_FUNC_NOTEQUAL:
-				renderLog.Printf_NoIndent( "NOTEQUAL" );
-				break;
-			case GLS_STENCIL_FUNC_GEQUAL:
-				renderLog.Printf_NoIndent( "GEQUAL" );
-				break;
-			case GLS_STENCIL_FUNC_ALWAYS:
-				renderLog.Printf_NoIndent( "ALWAYS" );
-				break;
-			default:
-				renderLog.Printf_NoIndent( "NA" );
-				break;
+		switch ( bits & GLS_STENCIL_FUNC_BITS ) {
+			case GLS_STENCIL_FUNC_NEVER:	renderLog.Printf_NoIndent( "NEVER" ); break;
+			case GLS_STENCIL_FUNC_LESS:		renderLog.Printf_NoIndent( "LESS" ); break;
+			case GLS_STENCIL_FUNC_EQUAL:	renderLog.Printf_NoIndent( "EQUAL" ); break;
+			case GLS_STENCIL_FUNC_LEQUAL:	renderLog.Printf_NoIndent( "LEQUAL" ); break;
+			case GLS_STENCIL_FUNC_GREATER:	renderLog.Printf_NoIndent( "GREATER" ); break;
+			case GLS_STENCIL_FUNC_NOTEQUAL: renderLog.Printf_NoIndent( "NOTEQUAL" ); break;
+			case GLS_STENCIL_FUNC_GEQUAL:	renderLog.Printf_NoIndent( "GEQUAL" ); break;
+			case GLS_STENCIL_FUNC_ALWAYS:	renderLog.Printf_NoIndent( "ALWAYS" ); break;
+			default:						renderLog.Printf_NoIndent( "NA" ); break;
 		}
 		renderLog.Printf_NoIndent( ", OpFail=" );
-		switch( bits & GLS_STENCIL_OP_FAIL_BITS )
-		{
-			case GLS_STENCIL_OP_FAIL_KEEP:
-				renderLog.Printf_NoIndent( "KEEP" );
-				break;
-			case GLS_STENCIL_OP_FAIL_ZERO:
-				renderLog.Printf_NoIndent( "ZERO" );
-				break;
-			case GLS_STENCIL_OP_FAIL_REPLACE:
-				renderLog.Printf_NoIndent( "REPLACE" );
-				break;
-			case GLS_STENCIL_OP_FAIL_INCR:
-				renderLog.Printf_NoIndent( "INCR" );
-				break;
-			case GLS_STENCIL_OP_FAIL_DECR:
-				renderLog.Printf_NoIndent( "DECR" );
-				break;
-			case GLS_STENCIL_OP_FAIL_INVERT:
-				renderLog.Printf_NoIndent( "INVERT" );
-				break;
-			case GLS_STENCIL_OP_FAIL_INCR_WRAP:
-				renderLog.Printf_NoIndent( "INCR_WRAP" );
-				break;
-			case GLS_STENCIL_OP_FAIL_DECR_WRAP:
-				renderLog.Printf_NoIndent( "DECR_WRAP" );
-				break;
-			default:
-				renderLog.Printf_NoIndent( "NA" );
-				break;
+		switch( bits & GLS_STENCIL_OP_FAIL_BITS ) {
+			case GLS_STENCIL_OP_FAIL_KEEP:		renderLog.Printf_NoIndent( "KEEP" ); break;
+			case GLS_STENCIL_OP_FAIL_ZERO:		renderLog.Printf_NoIndent( "ZERO" ); break;
+			case GLS_STENCIL_OP_FAIL_REPLACE:	renderLog.Printf_NoIndent( "REPLACE" ); break;
+			case GLS_STENCIL_OP_FAIL_INCR:		renderLog.Printf_NoIndent( "INCR" ); break;
+			case GLS_STENCIL_OP_FAIL_DECR:		renderLog.Printf_NoIndent( "DECR" ); break;
+			case GLS_STENCIL_OP_FAIL_INVERT:	renderLog.Printf_NoIndent( "INVERT" ); break;
+			case GLS_STENCIL_OP_FAIL_INCR_WRAP: renderLog.Printf_NoIndent( "INCR_WRAP" ); break;
+			case GLS_STENCIL_OP_FAIL_DECR_WRAP: renderLog.Printf_NoIndent( "DECR_WRAP" ); break;
+			default:							renderLog.Printf_NoIndent( "NA" ); break;
 		}
 		renderLog.Printf_NoIndent( ", ZFail=" );
-		switch( bits & GLS_STENCIL_OP_ZFAIL_BITS )
-		{
-			case GLS_STENCIL_OP_ZFAIL_KEEP:
-				renderLog.Printf_NoIndent( "KEEP" );
-				break;
-			case GLS_STENCIL_OP_ZFAIL_ZERO:
-				renderLog.Printf_NoIndent( "ZERO" );
-				break;
-			case GLS_STENCIL_OP_ZFAIL_REPLACE:
-				renderLog.Printf_NoIndent( "REPLACE" );
-				break;
-			case GLS_STENCIL_OP_ZFAIL_INCR:
-				renderLog.Printf_NoIndent( "INCR" );
-				break;
-			case GLS_STENCIL_OP_ZFAIL_DECR:
-				renderLog.Printf_NoIndent( "DECR" );
-				break;
-			case GLS_STENCIL_OP_ZFAIL_INVERT:
-				renderLog.Printf_NoIndent( "INVERT" );
-				break;
-			case GLS_STENCIL_OP_ZFAIL_INCR_WRAP:
-				renderLog.Printf_NoIndent( "INCR_WRAP" );
-				break;
-			case GLS_STENCIL_OP_ZFAIL_DECR_WRAP:
-				renderLog.Printf_NoIndent( "DECR_WRAP" );
-				break;
-			default:
-				renderLog.Printf_NoIndent( "NA" );
-				break;
+		switch( bits & GLS_STENCIL_OP_ZFAIL_BITS ) {
+			case GLS_STENCIL_OP_ZFAIL_KEEP:			renderLog.Printf_NoIndent( "KEEP" ); break;
+			case GLS_STENCIL_OP_ZFAIL_ZERO:			renderLog.Printf_NoIndent( "ZERO" ); break;
+			case GLS_STENCIL_OP_ZFAIL_REPLACE:		renderLog.Printf_NoIndent( "REPLACE" ); break;
+			case GLS_STENCIL_OP_ZFAIL_INCR:			renderLog.Printf_NoIndent( "INCR" ); break;
+			case GLS_STENCIL_OP_ZFAIL_DECR:			renderLog.Printf_NoIndent( "DECR" ); break;
+			case GLS_STENCIL_OP_ZFAIL_INVERT:		renderLog.Printf_NoIndent( "INVERT" ); break;
+			case GLS_STENCIL_OP_ZFAIL_INCR_WRAP:	renderLog.Printf_NoIndent( "INCR_WRAP" ); break;
+			case GLS_STENCIL_OP_ZFAIL_DECR_WRAP:	renderLog.Printf_NoIndent( "DECR_WRAP" ); break;
+			default:								renderLog.Printf_NoIndent( "NA" ); break;
 		}
 		renderLog.Printf_NoIndent( ", OpPass=" );
-		switch( bits & GLS_STENCIL_OP_PASS_BITS )
-		{
-			case GLS_STENCIL_OP_PASS_KEEP:
-				renderLog.Printf_NoIndent( "KEEP" );
-				break;
-			case GLS_STENCIL_OP_PASS_ZERO:
-				renderLog.Printf_NoIndent( "ZERO" );
-				break;
-			case GLS_STENCIL_OP_PASS_REPLACE:
-				renderLog.Printf_NoIndent( "REPLACE" );
-				break;
-			case GLS_STENCIL_OP_PASS_INCR:
-				renderLog.Printf_NoIndent( "INCR" );
-				break;
-			case GLS_STENCIL_OP_PASS_DECR:
-				renderLog.Printf_NoIndent( "DECR" );
-				break;
-			case GLS_STENCIL_OP_PASS_INVERT:
-				renderLog.Printf_NoIndent( "INVERT" );
-				break;
-			case GLS_STENCIL_OP_PASS_INCR_WRAP:
-				renderLog.Printf_NoIndent( "INCR_WRAP" );
-				break;
-			case GLS_STENCIL_OP_PASS_DECR_WRAP:
-				renderLog.Printf_NoIndent( "DECR_WRAP" );
-				break;
-			default:
-				renderLog.Printf_NoIndent( "NA" );
-				break;
+		switch( bits & GLS_STENCIL_OP_PASS_BITS ) {
+			case GLS_STENCIL_OP_PASS_KEEP:			renderLog.Printf_NoIndent( "KEEP" ); break;
+			case GLS_STENCIL_OP_PASS_ZERO:			renderLog.Printf_NoIndent( "ZERO" ); break;
+			case GLS_STENCIL_OP_PASS_REPLACE:		renderLog.Printf_NoIndent( "REPLACE" ); break;
+			case GLS_STENCIL_OP_PASS_INCR:			renderLog.Printf_NoIndent( "INCR" ); break;
+			case GLS_STENCIL_OP_PASS_DECR:			renderLog.Printf_NoIndent( "DECR" ); break;
+			case GLS_STENCIL_OP_PASS_INVERT:		renderLog.Printf_NoIndent( "INVERT" ); break;
+			case GLS_STENCIL_OP_PASS_INCR_WRAP:		renderLog.Printf_NoIndent( "INCR_WRAP" ); break;
+			case GLS_STENCIL_OP_PASS_DECR_WRAP:		renderLog.Printf_NoIndent( "DECR_WRAP" ); break;
+			default:								renderLog.Printf_NoIndent( "NA" ); break;
 		}
 		renderLog.Printf_NoIndent( ", mask=%llu, ref=%llu\n", mask, ref );
 	};
-	
+
 	uint32 mask = uint32( ( stateBits & GLS_STENCIL_FUNC_MASK_BITS ) >> GLS_STENCIL_FUNC_MASK_SHIFT );
 	uint32 ref = uint32( ( stateBits & GLS_STENCIL_FUNC_REF_BITS ) >> GLS_STENCIL_FUNC_REF_SHIFT );
-	if( stateBits & GLS_SEPARATE_STENCIL )
-	{
-		printStencil( STENCIL_FACE_FRONT, stencilBits[ 0 ], mask, ref );
-		printStencil( STENCIL_FACE_BACK, stencilBits[ 1 ], mask, ref );
-	}
-	else
-	{
+	if ( stateBits & GLS_SEPARATE_STENCIL ) {
+		printStencil( STENCIL_FACE_FRONT, ( stateBits & GLS_STENCIL_FRONT_OPS ), mask, ref );
+		printStencil( STENCIL_FACE_BACK, ( ( stateBits & GLS_STENCIL_BACK_OPS ) >> 12 ), mask, ref );
+	} else {
 		printStencil( STENCIL_FACE_NUM, stateBits, mask, ref );
 	}
-	
+
 	renderLog.CloseBlock();
 }
-#endif
+
 
 /*
 ================
@@ -384,7 +203,7 @@ RB_SetMVP
 */
 void RB_SetMVP( const idRenderMatrix& mvp )
 {
-	SetVertexParms( RENDERPARM_MVPMATRIX_X, mvp[0], 4 );
+	renderProgManager.SetRenderParms( RENDERPARM_MVPMATRIX_X, mvp[0], 4 );
 }
 
 /*
@@ -397,7 +216,7 @@ static void RB_SetMVPWithStereoOffset( const idRenderMatrix& mvp, const float st
 	idRenderMatrix offset = mvp;
 	offset[0][3] += stereoOffset;
 	
-	SetVertexParms( RENDERPARM_MVPMATRIX_X, offset[0], 4 );
+	renderProgManager.SetRenderParms( RENDERPARM_MVPMATRIX_X, offset[0], 4 );
 }
 
 static const float zero[4] = { 0, 0, 0, 0 };
@@ -414,16 +233,16 @@ void RB_SetVertexColorParms( stageVertexColor_t svc )
 	switch( svc )
 	{
 		case SVC_IGNORE:
-			SetVertexParm( RENDERPARM_VERTEXCOLOR_MODULATE, zero );
-			SetVertexParm( RENDERPARM_VERTEXCOLOR_ADD, one );
+			renderProgManager.SetRenderParm( RENDERPARM_VERTEXCOLOR_MODULATE, zero );
+			renderProgManager.SetRenderParm( RENDERPARM_VERTEXCOLOR_ADD, one );
 			break;
 		case SVC_MODULATE:
-			SetVertexParm( RENDERPARM_VERTEXCOLOR_MODULATE, one );
-			SetVertexParm( RENDERPARM_VERTEXCOLOR_ADD, zero );
+			renderProgManager.SetRenderParm( RENDERPARM_VERTEXCOLOR_MODULATE, one );
+			renderProgManager.SetRenderParm( RENDERPARM_VERTEXCOLOR_ADD, zero );
 			break;
 		case SVC_INVERSE_MODULATE:
-			SetVertexParm( RENDERPARM_VERTEXCOLOR_MODULATE, negOne );
-			SetVertexParm( RENDERPARM_VERTEXCOLOR_ADD, one );
+			renderProgManager.SetRenderParm( RENDERPARM_VERTEXCOLOR_MODULATE, negOne );
+			renderProgManager.SetRenderParm( RENDERPARM_VERTEXCOLOR_ADD, one );
 			break;
 	}
 }
@@ -500,8 +319,8 @@ static void RB_LoadShaderTextureMatrix( const float* shaderRegisters, const text
 		renderLog.Outdent();
 	}
 	
-	SetVertexParm( RENDERPARM_TEXTUREMATRIX_S, texS );
-	SetVertexParm( RENDERPARM_TEXTUREMATRIX_T, texT );
+	renderProgManager.SetRenderParm( RENDERPARM_TEXTUREMATRIX_S, texS );
+	renderProgManager.SetRenderParm( RENDERPARM_TEXTUREMATRIX_T, texT );
 }
 
 /*
@@ -562,7 +381,7 @@ void idRenderBackend::BindVariableStageImage( const textureStage_t* texture, con
 		
 		if( r_skipDynamicTextures.GetBool() )
 		{
-			globalImages->defaultImage->Bind();
+			GL_BindTexture(0, globalImages->defaultImage);
 			return;
 		}
 		
@@ -572,19 +391,14 @@ void idRenderBackend::BindVariableStageImage( const textureStage_t* texture, con
 		cin = texture->cinematic->ImageForTime( viewDef->renderView.time[0] + idMath::Ftoi( 1000.0f * viewDef->renderView.shaderParms[11] ) );
 		if( cin.imageY != NULL )
 		{
-			GL_SelectTexture( 0 );
-			cin.imageY->Bind();
-			GL_SelectTexture( 1 );
-			cin.imageCr->Bind();
-			GL_SelectTexture( 2 );
-			cin.imageCb->Bind();
-			
+			GL_BindTexture( 0, cin.imageY);
+			GL_BindTexture( 1, cin.imageCr);
+			GL_BindTexture( 2, cin.imageCb);			
 		}
 		else if( cin.image != NULL )
 		{
 			// Carl: A single RGB image works better with the FFMPEG BINK codec.
-			GL_SelectTexture( 0 );
-			cin.image->Bind();
+			GL_BindTexture( 0, cin.image);
 			
 			/*
 			if( backEnd.viewDef->is2Dgui )
@@ -599,7 +413,7 @@ void idRenderBackend::BindVariableStageImage( const textureStage_t* texture, con
 		}
 		else
 		{
-			globalImages->blackImage->Bind();
+			GL_BindTexture(0, globalImages->blackImage);
 			// because the shaders may have already been set - we need to make sure we are not using a bink shader which would
 			// display incorrectly.  We may want to get rid of RB_BindVariableStageImage and inline the code so that the
 			// SWF GUI case is handled better, too
@@ -611,7 +425,7 @@ void idRenderBackend::BindVariableStageImage( const textureStage_t* texture, con
 		// FIXME: see why image is invalid
 		if( texture->image != NULL )
 		{
-			texture->image->Bind();
+			GL_BindTexture(0, texture->image);
 		}
 	}
 }
@@ -637,9 +451,7 @@ void idRenderBackend::PrepareStageTexturing( const shaderStage_t* pStage,  const
 		if( bumpStage != NULL )
 		{
 			// per-pixel reflection mapping with bump mapping
-			GL_SelectTexture( 1 );
-			bumpStage->texture.image->Bind();
-			GL_SelectTexture( 0 );
+			GL_BindTexture( 1, bumpStage->texture.image);
 			
 			RENDERLOG_PRINTF( "TexGen: TG_REFLECT_CUBE: Bumpy Environment\n" );
 			if( surf->jointCache )
@@ -725,7 +537,7 @@ void idRenderBackend::PrepareStageTexturing( const shaderStage_t* pStage,  const
 		transform[2 * 4 + 2] = axis[2][2];
 		transform[2 * 4 + 3] = 0.0f;
 		
-		SetVertexParms( RENDERPARM_WOBBLESKY_X, transform, 3 );
+		renderProgManager.SetRenderParms( RENDERPARM_WOBBLESKY_X, transform, 3 );
 		renderProgManager.BindShader_WobbleSky();
 		
 	}
@@ -748,21 +560,21 @@ void idRenderBackend::PrepareStageTexturing( const shaderStage_t* pStage,  const
 		plane[1] = mat[1 * 4 + 0];
 		plane[2] = mat[2 * 4 + 0];
 		plane[3] = mat[3 * 4 + 0];
-		SetVertexParm( RENDERPARM_TEXGEN_0_S, plane );
+		renderProgManager.SetRenderParm( RENDERPARM_TEXGEN_0_S, plane );
 		RENDERLOG_PRINTF( "TEXGEN_S = %4.3f, %4.3f, %4.3f, %4.3f\n",  plane[0], plane[1], plane[2], plane[3] );
 		
 		plane[0] = mat[0 * 4 + 1];
 		plane[1] = mat[1 * 4 + 1];
 		plane[2] = mat[2 * 4 + 1];
 		plane[3] = mat[3 * 4 + 1];
-		SetVertexParm( RENDERPARM_TEXGEN_0_T, plane );
+		renderProgManager.SetRenderParm( RENDERPARM_TEXGEN_0_T, plane );
 		RENDERLOG_PRINTF( "TEXGEN_T = %4.3f, %4.3f, %4.3f, %4.3f\n",  plane[0], plane[1], plane[2], plane[3] );
 		
 		plane[0] = mat[0 * 4 + 3];
 		plane[1] = mat[1 * 4 + 3];
 		plane[2] = mat[2 * 4 + 3];
 		plane[3] = mat[3 * 4 + 3];
-		SetVertexParm( RENDERPARM_TEXGEN_0_Q, plane );
+		renderProgManager.SetRenderParm( RENDERPARM_TEXGEN_0_Q, plane );
 		RENDERLOG_PRINTF( "TEXGEN_Q = %4.3f, %4.3f, %4.3f, %4.3f\n",  plane[0], plane[1], plane[2], plane[3] );
 		
 		renderLog.Outdent();
@@ -782,7 +594,7 @@ void idRenderBackend::PrepareStageTexturing( const shaderStage_t* pStage,  const
 		idLib::Warning( "Using GlassWarp! Please contact Brian!" );
 	}
 	
-	SetVertexParm( RENDERPARM_TEXGEN_0_ENABLED, useTexGenParm );
+	renderProgManager.SetRenderParm( RENDERPARM_TEXGEN_0_ENABLED, useTexGenParm );
 }
 
 /*
@@ -795,7 +607,7 @@ void idRenderBackend::FinishStageTexturing( const shaderStage_t* pStage, const d
 	if( pStage->texture.cinematic )
 	{
 		// unbind the extra bink textures
-		GL_SelectTexture( 0 );
+		//GL_SelectTexture( 0 );
 	}
 	
 	if( pStage->texture.texgen == TG_REFLECT_CUBE )
@@ -805,7 +617,7 @@ void idRenderBackend::FinishStageTexturing( const shaderStage_t* pStage, const d
 		if( bumpStage != NULL )
 		{
 			// per-pixel reflection mapping with bump mapping
-			GL_SelectTexture( 0 );
+			//GL_SelectTexture( 0 );
 		}
 		else
 		{
@@ -973,7 +785,7 @@ void idRenderBackend::FillDepthBufferGeneric( const drawSurf_t* const* drawSurfs
 #ifdef USE_CORE_PROFILE
 				GL_State( stageGLState );
 				idVec4 alphaTestValue( regs[ pStage->alphaTestRegister ] );
-				SetFragmentParm( RENDERPARM_ALPHA_TEST, alphaTestValue.ToFloatPtr() );
+				renderProgManager.SetRenderParm( RENDERPARM_ALPHA_TEST, alphaTestValue.ToFloatPtr() );
 #else
 				GL_State( stageGLState | GLS_ALPHATEST_FUNC_GREATER | GLS_ALPHATEST_MAKE_REF( idMath::Ftob( 255.0f * regs[ pStage->alphaTestRegister ] ) ) );
 #endif
@@ -990,20 +802,19 @@ void idRenderBackend::FillDepthBufferGeneric( const drawSurf_t* const* drawSurfs
 				RB_SetVertexColorParms( SVC_IGNORE );
 				
 				// bind the texture
-				GL_SelectTexture( 0 );
-				pStage->texture.image->Bind();
+				GL_BindTexture( 0, pStage->texture.image);
 				
 				// set texture matrix and texGens
 				PrepareStageTexturing( pStage, drawSurf );
 				
 				// must render with less-equal for Z-Cull to work properly
 				assert( ( GL_GetCurrentState() & GLS_DEPTHFUNC_BITS ) == GLS_DEPTHFUNC_LESS );
-				
+
 				// draw it
 				DrawElementsWithCounters( drawSurf );
 				
 				// clean up
-				FinishStageTexturing( pStage, drawSurf );
+				//FinishStageTexturing( pStage, drawSurf );
 				
 				// unset privatePolygonOffset if necessary
 				if( pStage->privatePolygonOffset )
@@ -1042,7 +853,7 @@ void idRenderBackend::FillDepthBufferGeneric( const drawSurf_t* const* drawSurfs
 			
 			// must render with less-equal for Z-Cull to work properly
 			assert( ( GL_GetCurrentState() & GLS_DEPTHFUNC_BITS ) == GLS_DEPTHFUNC_LESS );
-			
+
 			// draw it
 			DrawElementsWithCounters( drawSurf );
 		}
@@ -1051,7 +862,7 @@ void idRenderBackend::FillDepthBufferGeneric( const drawSurf_t* const* drawSurfs
 	}
 	
 #ifdef USE_CORE_PROFILE
-	SetFragmentParm( RENDERPARM_ALPHA_TEST, vec4_zero.ToFloatPtr() );
+	renderProgManager.SetRenderParm( RENDERPARM_ALPHA_TEST, vec4_zero.ToFloatPtr() );
 #endif
 }
 
@@ -1155,7 +966,7 @@ void idRenderBackend::FillDepthBufferFast( drawSurf_t** drawSurfs, int numDrawSu
 		
 		// must render with less-equal for Z-Cull to work properly
 		assert( ( GL_GetCurrentState() & GLS_DEPTHFUNC_BITS ) == GLS_DEPTHFUNC_LESS );
-		
+
 		// draw it solid
 		DrawElementsWithCounters( surf );
 		
@@ -1284,33 +1095,30 @@ void idRenderBackend::DrawSingleInteraction( drawInteraction_t* din )
 	}
 	
 	// bump matrix
-	SetVertexParm( RENDERPARM_BUMPMATRIX_S, din->bumpMatrix[0].ToFloatPtr() );
-	SetVertexParm( RENDERPARM_BUMPMATRIX_T, din->bumpMatrix[1].ToFloatPtr() );
+	renderProgManager.SetRenderParm( RENDERPARM_BUMPMATRIX_S, din->bumpMatrix[0].ToFloatPtr() );
+	renderProgManager.SetRenderParm( RENDERPARM_BUMPMATRIX_T, din->bumpMatrix[1].ToFloatPtr() );
 	
 	// diffuse matrix
-	SetVertexParm( RENDERPARM_DIFFUSEMATRIX_S, din->diffuseMatrix[0].ToFloatPtr() );
-	SetVertexParm( RENDERPARM_DIFFUSEMATRIX_T, din->diffuseMatrix[1].ToFloatPtr() );
+	renderProgManager.SetRenderParm( RENDERPARM_DIFFUSEMATRIX_S, din->diffuseMatrix[0].ToFloatPtr() );
+	renderProgManager.SetRenderParm( RENDERPARM_DIFFUSEMATRIX_T, din->diffuseMatrix[1].ToFloatPtr() );
 	
 	// specular matrix
-	SetVertexParm( RENDERPARM_SPECULARMATRIX_S, din->specularMatrix[0].ToFloatPtr() );
-	SetVertexParm( RENDERPARM_SPECULARMATRIX_T, din->specularMatrix[1].ToFloatPtr() );
+	renderProgManager.SetRenderParm( RENDERPARM_SPECULARMATRIX_S, din->specularMatrix[0].ToFloatPtr() );
+	renderProgManager.SetRenderParm( RENDERPARM_SPECULARMATRIX_T, din->specularMatrix[1].ToFloatPtr() );
 	
 	RB_SetVertexColorParms( din->vertexColor );
 	
-	SetFragmentParm( RENDERPARM_DIFFUSEMODIFIER, din->diffuseColor.ToFloatPtr() );
-	SetFragmentParm( RENDERPARM_SPECULARMODIFIER, din->specularColor.ToFloatPtr() );
+	renderProgManager.SetRenderParm( RENDERPARM_DIFFUSEMODIFIER, din->diffuseColor.ToFloatPtr() );
+	renderProgManager.SetRenderParm( RENDERPARM_SPECULARMODIFIER, din->specularColor.ToFloatPtr() );
 	
 	// texture 0 will be the per-surface bump map
-	GL_SelectTexture( INTERACTION_TEXUNIT_BUMP );
-	din->bumpImage->Bind();
+	GL_BindTexture( INTERACTION_TEXUNIT_BUMP, din->bumpImage);
 	
 	// texture 3 is the per-surface diffuse map
-	GL_SelectTexture( INTERACTION_TEXUNIT_DIFFUSE );
-	din->diffuseImage->Bind();
+	GL_BindTexture( INTERACTION_TEXUNIT_DIFFUSE, din->diffuseImage);
 	
 	// texture 4 is the per-surface specular map
-	GL_SelectTexture( INTERACTION_TEXUNIT_SPECULAR );
-	din->specularImage->Bind();
+	GL_BindTexture( INTERACTION_TEXUNIT_SPECULAR, din->specularImage);
 	
 	DrawElementsWithCounters( din->surf );
 }
@@ -1328,21 +1136,21 @@ static void RB_SetupForFastPathInteractions( const idVec4& diffuseColor, const i
 	const idVec4 tMatrix( 0, 1, 0, 0 );
 	
 	// bump matrix
-	SetVertexParm( RENDERPARM_BUMPMATRIX_S, sMatrix.ToFloatPtr() );
-	SetVertexParm( RENDERPARM_BUMPMATRIX_T, tMatrix.ToFloatPtr() );
+	renderProgManager.SetRenderParm( RENDERPARM_BUMPMATRIX_S, sMatrix.ToFloatPtr() );
+	renderProgManager.SetRenderParm( RENDERPARM_BUMPMATRIX_T, tMatrix.ToFloatPtr() );
 	
 	// diffuse matrix
-	SetVertexParm( RENDERPARM_DIFFUSEMATRIX_S, sMatrix.ToFloatPtr() );
-	SetVertexParm( RENDERPARM_DIFFUSEMATRIX_T, tMatrix.ToFloatPtr() );
+	renderProgManager.SetRenderParm( RENDERPARM_DIFFUSEMATRIX_S, sMatrix.ToFloatPtr() );
+	renderProgManager.SetRenderParm( RENDERPARM_DIFFUSEMATRIX_T, tMatrix.ToFloatPtr() );
 	
 	// specular matrix
-	SetVertexParm( RENDERPARM_SPECULARMATRIX_S, sMatrix.ToFloatPtr() );
-	SetVertexParm( RENDERPARM_SPECULARMATRIX_T, tMatrix.ToFloatPtr() );
+	renderProgManager.SetRenderParm( RENDERPARM_SPECULARMATRIX_S, sMatrix.ToFloatPtr() );
+	renderProgManager.SetRenderParm( RENDERPARM_SPECULARMATRIX_T, tMatrix.ToFloatPtr() );
 	
 	RB_SetVertexColorParms( SVC_IGNORE );
 	
-	SetFragmentParm( RENDERPARM_DIFFUSEMODIFIER, diffuseColor.ToFloatPtr() );
-	SetFragmentParm( RENDERPARM_SPECULARMODIFIER, specularColor.ToFloatPtr() );
+	renderProgManager.SetRenderParm( RENDERPARM_DIFFUSEMODIFIER, diffuseColor.ToFloatPtr() );
+	renderProgManager.SetRenderParm( RENDERPARM_SPECULARMODIFIER, specularColor.ToFloatPtr() );
 }
 
 /*
@@ -1449,14 +1257,14 @@ void idRenderBackend::RenderInteractions( const drawSurf_t* surfList, const view
 		screenCorrectionParm[1] = 1.0f / JITTER_SIZE;
 		screenCorrectionParm[2] = 1.0f / shadowMapResolutions[vLight->shadowLOD];
 		screenCorrectionParm[3] = vLight->parallel ? r_shadowMapSunDepthBiasScale.GetFloat() : r_shadowMapRegularDepthBiasScale.GetFloat();
-		SetFragmentParm( RENDERPARM_SCREENCORRECTIONFACTOR, screenCorrectionParm ); // rpScreenCorrectionFactor
+		renderProgManager.SetRenderParm( RENDERPARM_SCREENCORRECTIONFACTOR, screenCorrectionParm ); // rpScreenCorrectionFactor
 		
 		float jitterTexScale[4];
 		jitterTexScale[0] = r_shadowMapJitterScale.GetFloat() * jitterSampleScale;	// TODO shadow buffer size fraction shadowMapSize / maxShadowMapSize
 		jitterTexScale[1] = r_shadowMapJitterScale.GetFloat() * jitterSampleScale;
 		jitterTexScale[2] = -r_shadowMapBiasScale.GetFloat();
 		jitterTexScale[3] = 0.0f;
-		SetFragmentParm( RENDERPARM_JITTERTEXSCALE, jitterTexScale ); // rpJitterTexScale
+		renderProgManager.SetRenderParm( RENDERPARM_JITTERTEXSCALE, jitterTexScale ); // rpJitterTexScale
 		
 		float jitterTexOffset[4];
 		if( r_shadowMapRandomizeJitter.GetBool() )
@@ -1471,7 +1279,7 @@ void idRenderBackend::RenderInteractions( const drawSurf_t* surfList, const view
 		}
 		jitterTexOffset[2] = 0.0f;
 		jitterTexOffset[3] = 0.0f;
-		SetFragmentParm( RENDERPARM_JITTERTEXOFFSET, jitterTexOffset ); // rpJitterTexOffset
+		renderProgManager.SetRenderParm( RENDERPARM_JITTERTEXOFFSET, jitterTexOffset ); // rpJitterTexOffset
 		
 		if( vLight->parallel )
 		{
@@ -1480,7 +1288,7 @@ void idRenderBackend::RenderInteractions( const drawSurf_t* surfList, const view
 			cascadeDistances[1] = viewDef->frustumSplitDistances[1];
 			cascadeDistances[2] = viewDef->frustumSplitDistances[2];
 			cascadeDistances[3] = viewDef->frustumSplitDistances[3];
-			SetFragmentParm( RENDERPARM_CASCADEDISTANCES, cascadeDistances ); // rpCascadeDistances
+			renderProgManager.SetRenderParm( RENDERPARM_CASCADEDISTANCES, cascadeDistances ); // rpCascadeDistances
 		}
 		
 	}
@@ -1514,35 +1322,32 @@ void idRenderBackend::RenderInteractions( const drawSurf_t* surfList, const view
 		}
 		
 		// texture 1 will be the light falloff texture
-		GL_SelectTexture( INTERACTION_TEXUNIT_FALLOFF );
-		vLight->falloffImage->Bind();
+		GL_BindTexture( INTERACTION_TEXUNIT_FALLOFF, vLight->falloffImage);
 		
 		// texture 2 will be the light projection texture
-		GL_SelectTexture( INTERACTION_TEXUNIT_PROJECTION );
-		lightStage->texture.image->Bind();
-		
+		GL_BindTexture( INTERACTION_TEXUNIT_PROJECTION, lightStage->texture.image);
+
+#if !defined(ID_VULKAN)		
 		if( r_useShadowMapping.GetBool() )
 		{
 			// texture 5 will be the shadow maps array
-			GL_SelectTexture( INTERACTION_TEXUNIT_SHADOWMAPS );
-			globalImages->shadowImage[vLight->shadowLOD]->Bind();
+			GL_BindTexture( INTERACTION_TEXUNIT_SHADOWMAPS, globalImages->shadowImage[vLight->shadowLOD]);
 			
 			// texture 6 will be the jitter texture for soft shadowing
-			GL_SelectTexture( INTERACTION_TEXUNIT_JITTER );
 			if( r_shadowMapSamples.GetInteger() == 16 )
 			{
-				globalImages->jitterImage16->Bind();
+				GL_BindTexture( INTERACTION_TEXUNIT_JITTER, globalImages->jitterImage16);
 			}
 			else if( r_shadowMapSamples.GetInteger() == 4 )
 			{
-				globalImages->jitterImage4->Bind();
+				GL_BindTexture( INTERACTION_TEXUNIT_JITTER, globalImages->jitterImage4);
 			}
 			else
 			{
-				globalImages->jitterImage1->Bind();
+				GL_BindTexture( INTERACTION_TEXUNIT_JITTER, globalImages->jitterImage1);
 			}
 		}
-		
+#endif
 		// force the light textures to not use anisotropic filtering, which is wasted on them
 		// all of the texture sampler parms should be constant for all interactions, only
 		// the actual texture image bindings will change
@@ -1575,6 +1380,7 @@ void idRenderBackend::RenderInteractions( const drawSurf_t* surfList, const view
 			}
 			else
 			{
+#if !defined(ID_VULKAN)
 				if( r_useShadowMapping.GetBool() && vLight->globalShadows )
 				{
 					// RB: we have shadow mapping enabled and shadow maps so do a shadow compare
@@ -1614,6 +1420,7 @@ void idRenderBackend::RenderInteractions( const drawSurf_t* surfList, const view
 					}
 				}
 				else
+#endif
 				{
 					if( surf->jointCache )
 					{
@@ -1664,15 +1471,15 @@ void idRenderBackend::RenderInteractions( const drawSurf_t* surfList, const view
 				idRenderMatrix modelMatrix;
 				idRenderMatrix::Transpose( *( idRenderMatrix* )surf->space->modelMatrix, modelMatrix );
 				
-				SetVertexParms( RENDERPARM_MODELMATRIX_X, modelMatrix[0], 4 );
+				renderProgManager.SetRenderParms( RENDERPARM_MODELMATRIX_X, modelMatrix[0], 4 );
 				
 				// for determining the shadow mapping cascades
 				idRenderMatrix modelViewMatrix, tmp;
 				idRenderMatrix::Transpose( *( idRenderMatrix* )surf->space->modelViewMatrix, modelViewMatrix );
-				SetVertexParms( RENDERPARM_MODELVIEWMATRIX_X, modelViewMatrix[0], 4 );
+				renderProgManager.SetRenderParms( RENDERPARM_MODELVIEWMATRIX_X, modelViewMatrix[0], 4 );
 				
 				idVec4 globalLightOrigin( vLight->globalLightOrigin.x, vLight->globalLightOrigin.y, vLight->globalLightOrigin.z, 1.0f );
-				SetVertexParm( RENDERPARM_GLOBALLIGHTORIGIN, globalLightOrigin.ToFloatPtr() );
+				renderProgManager.SetRenderParm( RENDERPARM_GLOBALLIGHTORIGIN, globalLightOrigin.ToFloatPtr() );
 				// RB end
 				
 				// tranform the light/view origin into model local space
@@ -1682,8 +1489,8 @@ void idRenderBackend::RenderInteractions( const drawSurf_t* surfList, const view
 				R_GlobalPointToLocal( surf->space->modelMatrix, viewDef->renderView.vieworg, localViewOrigin.ToVec3() );
 				
 				// set the local light/view origin
-				SetVertexParm( RENDERPARM_LOCALLIGHTORIGIN, localLightOrigin.ToFloatPtr() );
-				SetVertexParm( RENDERPARM_LOCALVIEWORIGIN, localViewOrigin.ToFloatPtr() );
+				renderProgManager.SetRenderParm( RENDERPARM_LOCALLIGHTORIGIN, localLightOrigin.ToFloatPtr() );
+				renderProgManager.SetRenderParm( RENDERPARM_LOCALVIEWORIGIN, localViewOrigin.ToFloatPtr() );
 				
 				// transform the light project into model local space
 				idPlane lightProjection[4];
@@ -1699,10 +1506,10 @@ void idRenderBackend::RenderInteractions( const drawSurf_t* surfList, const view
 				}
 				
 				// set the light projection
-				SetVertexParm( RENDERPARM_LIGHTPROJECTION_S, lightProjection[0].ToFloatPtr() );
-				SetVertexParm( RENDERPARM_LIGHTPROJECTION_T, lightProjection[1].ToFloatPtr() );
-				SetVertexParm( RENDERPARM_LIGHTPROJECTION_Q, lightProjection[2].ToFloatPtr() );
-				SetVertexParm( RENDERPARM_LIGHTFALLOFF_S, lightProjection[3].ToFloatPtr() );
+				renderProgManager.SetRenderParm( RENDERPARM_LIGHTPROJECTION_S, lightProjection[0].ToFloatPtr() );
+				renderProgManager.SetRenderParm( RENDERPARM_LIGHTPROJECTION_T, lightProjection[1].ToFloatPtr() );
+				renderProgManager.SetRenderParm( RENDERPARM_LIGHTPROJECTION_Q, lightProjection[2].ToFloatPtr() );
+				renderProgManager.SetRenderParm( RENDERPARM_LIGHTFALLOFF_S, lightProjection[3].ToFloatPtr() );
 				
 				// RB begin
 				if( r_useShadowMapping.GetBool() )
@@ -1720,7 +1527,7 @@ void idRenderBackend::RenderInteractions( const drawSurf_t* surfList, const view
 							idRenderMatrix shadowWindowMVP;
 							idRenderMatrix::Multiply( renderMatrix_clipSpaceToWindowSpace, shadowClipMVP, shadowWindowMVP );
 							
-							SetVertexParms( ( renderParm_t )( RENDERPARM_SHADOW_MATRIX_0_X + i * 4 ), shadowWindowMVP[0], 4 );
+							renderProgManager.SetRenderParms( ( renderParm_t )( RENDERPARM_SHADOW_MATRIX_0_X + i * 4 ), shadowWindowMVP[0], 4 );
 						}
 					}
 					else if( vLight->pointLight )
@@ -1736,7 +1543,7 @@ void idRenderBackend::RenderInteractions( const drawSurf_t* surfList, const view
 							idRenderMatrix shadowWindowMVP;
 							idRenderMatrix::Multiply( renderMatrix_clipSpaceToWindowSpace, shadowClipMVP, shadowWindowMVP );
 							
-							SetVertexParms( ( renderParm_t )( RENDERPARM_SHADOW_MATRIX_0_X + i * 4 ), shadowWindowMVP[0], 4 );
+							renderProgManager.SetRenderParms( ( renderParm_t )( RENDERPARM_SHADOW_MATRIX_0_X + i * 4 ), shadowWindowMVP[0], 4 );
 						}
 					}
 					else
@@ -1749,7 +1556,7 @@ void idRenderBackend::RenderInteractions( const drawSurf_t* surfList, const view
 						idRenderMatrix shadowClipMVP;
 						idRenderMatrix::Multiply( shadowP[0], modelToShadowMatrix, shadowClipMVP );
 						
-						SetVertexParms( ( renderParm_t )( RENDERPARM_SHADOW_MATRIX_0_X ), shadowClipMVP[0], 4 );
+						renderProgManager.SetRenderParms( ( renderParm_t )( RENDERPARM_SHADOW_MATRIX_0_X ), shadowClipMVP[0], 4 );
 						
 					}
 				}
@@ -1762,16 +1569,13 @@ void idRenderBackend::RenderInteractions( const drawSurf_t* surfList, const view
 				renderLog.OpenBlock( surf->material->GetName() );
 				
 				// texture 0 will be the per-surface bump map
-				GL_SelectTexture( INTERACTION_TEXUNIT_BUMP );
-				surfaceShader->GetFastPathBumpImage()->Bind();
+				GL_BindTexture( INTERACTION_TEXUNIT_BUMP, surfaceShader->GetFastPathBumpImage());
 				
 				// texture 3 is the per-surface diffuse map
-				GL_SelectTexture( INTERACTION_TEXUNIT_DIFFUSE );
-				surfaceShader->GetFastPathDiffuseImage()->Bind();
+				GL_BindTexture( INTERACTION_TEXUNIT_DIFFUSE, surfaceShader->GetFastPathDiffuseImage());
 				
 				// texture 4 is the per-surface specular map
-				GL_SelectTexture( INTERACTION_TEXUNIT_SPECULAR );
-				surfaceShader->GetFastPathSpecularImage()->Bind();
+				GL_BindTexture( INTERACTION_TEXUNIT_SPECULAR, surfaceShader->GetFastPathSpecularImage());
 				
 				DrawElementsWithCounters( surf );
 				
@@ -1900,6 +1704,7 @@ idRenderBackend::AmbientPass
 */
 void idRenderBackend::AmbientPass( const drawSurf_t* const* drawSurfs, int numDrawSurfs, bool fillGbuffer )
 {
+#if !defined(ID_VULKAN)
 	if( fillGbuffer )
 	{
 		if( !r_useSSGI.GetBool() && !r_useSSAO.GetBool() )
@@ -1926,7 +1731,7 @@ void idRenderBackend::AmbientPass( const drawSurf_t* const* drawSurfs, int numDr
 		return;
 	}
 	
-	const bool hdrIsActive = ( r_useHDR.GetBool() && globalFramebuffers.hdrFBO != NULL && globalFramebuffers.hdrFBO->IsBound() );
+	//const bool hdrIsActive = ( r_useHDR.GetBool() && globalFramebuffers.hdrFBO != NULL && globalFramebuffers.hdrFBO->IsBound() );
 	
 	/*
 	if( fillGbuffer )
@@ -2059,7 +1864,7 @@ void idRenderBackend::AmbientPass( const drawSurf_t* const* drawSurfs, int numDr
 			// tranform the view origin into model local space
 			idVec4 localViewOrigin( 1.0f );
 			R_GlobalPointToLocal( drawSurf->space->modelMatrix, viewDef->renderView.vieworg, localViewOrigin.ToVec3() );
-			SetVertexParm( RENDERPARM_LOCALVIEWORIGIN, localViewOrigin.ToFloatPtr() );
+			renderProgManager.SetRenderParm( RENDERPARM_LOCALVIEWORIGIN, localViewOrigin.ToFloatPtr() );
 			
 			//if( !isWorldModel )
 			//{
@@ -2068,19 +1873,19 @@ void idRenderBackend::AmbientPass( const drawSurf_t* const* drawSurfs, int numDr
 			//	idVec4 localLightDirection( 0.0f );
 			//	R_GlobalVectorToLocal( drawSurf->space->modelMatrix, globalLightDirection, localLightDirection.ToVec3() );
 			//
-			//	SetVertexParm( RENDERPARM_LOCALLIGHTORIGIN, localLightDirection.ToFloatPtr() );
+			//	renderProgManager.SetRenderParm( RENDERPARM_LOCALLIGHTORIGIN, localLightDirection.ToFloatPtr() );
 			//}
 			
 			// RB: if we want to store the normals in world space so we need the model -> world matrix
 			idRenderMatrix modelMatrix;
 			idRenderMatrix::Transpose( *( idRenderMatrix* )drawSurf->space->modelMatrix, modelMatrix );
 			
-			SetVertexParms( RENDERPARM_MODELMATRIX_X, modelMatrix[0], 4 );
+			renderProgManager.SetRenderParms( RENDERPARM_MODELMATRIX_X, modelMatrix[0], 4 );
 			
 			// RB: if we want to store the normals in camera space so we need the model -> camera matrix
 			float modelViewMatrixTranspose[16];
 			R_MatrixTranspose( drawSurf->space->modelViewMatrix, modelViewMatrixTranspose );
-			SetVertexParms( RENDERPARM_MODELVIEWMATRIX_X, modelViewMatrixTranspose, 4 );
+			renderProgManager.SetRenderParms( RENDERPARM_MODELVIEWMATRIX_X, modelViewMatrixTranspose, 4 );
 		}
 		
 #if 0
@@ -2143,16 +1948,13 @@ void idRenderBackend::AmbientPass( const drawSurf_t* const* drawSurfs, int numDr
 			renderLog.OpenBlock( surfaceMaterial->GetName() );
 			
 			// texture 0 will be the per-surface bump map
-			GL_SelectTexture( INTERACTION_TEXUNIT_BUMP );
-			surfaceMaterial->GetFastPathBumpImage()->Bind();
+			GL_BindTexture( INTERACTION_TEXUNIT_BUMP, surfaceMaterial->GetFastPathBumpImage());
 			
 			// texture 3 is the per-surface diffuse map
-			GL_SelectTexture( INTERACTION_TEXUNIT_DIFFUSE );
-			surfaceMaterial->GetFastPathDiffuseImage()->Bind();
+			GL_BindTexture( INTERACTION_TEXUNIT_DIFFUSE, surfaceMaterial->GetFastPathDiffuseImage());
 			
 			// texture 4 is the per-surface specular map
-			GL_SelectTexture( INTERACTION_TEXUNIT_SPECULAR );
-			surfaceMaterial->GetFastPathSpecularImage()->Bind();
+			GL_BindTexture( INTERACTION_TEXUNIT_SPECULAR, surfaceMaterial->GetFastPathSpecularImage());
 			
 			DrawElementsWithCounters( drawSurf );
 			
@@ -2268,20 +2070,23 @@ void idRenderBackend::AmbientPass( const drawSurf_t* const* drawSurfs, int numDr
 	}
 	
 #ifdef USE_CORE_PROFILE
-	SetFragmentParm( RENDERPARM_ALPHA_TEST, vec4_zero.ToFloatPtr() );
+	renderProgManager.SetRenderParm( RENDERPARM_ALPHA_TEST, vec4_zero.ToFloatPtr() );
 #endif
 	
 	renderLog.CloseBlock();
 	renderLog.CloseMainBlock();
 	
-	GL_SelectTexture( 0 );
+	//GL_SelectTexture( 0 );
 	
 	if( fillGbuffer )
 	{
 		// FIXME: this copies RGBA16F into _currentNormals if HDR is enabled
 		const idScreenRect& viewport = viewDef->viewport;
+#if defined(ID_VULKAN)
+		idLib::Printf("CopyFramebuffer not implemented");
+#else
 		globalImages->currentNormalsImage->CopyFramebuffer( viewport.x1, viewport.y1, viewport.GetWidth(), viewport.GetHeight() );
-		
+#endif		
 		//GL_Clear( true, false, false, STENCIL_SHADOW_TEST_VALUE, 0.0f, 0.0f, 0.0f, 1.0f, false );
 		
 		
@@ -2298,6 +2103,7 @@ void idRenderBackend::AmbientPass( const drawSurf_t* const* drawSurfs, int numDr
 	}
 	
 	renderProgManager.Unbind();
+#endif /* ID_VULKAN */
 }
 
 // RB end
@@ -2333,7 +2139,7 @@ void idRenderBackend::StencilShadowPass( const drawSurf_t* drawSurfs, const view
 	
 	renderProgManager.BindShader_Shadow();
 	
-	GL_SelectTexture( 0 );
+	//GL_SelectTexture( 0 );
 	
 	uint64 glState = 0;
 	
@@ -2341,7 +2147,7 @@ void idRenderBackend::StencilShadowPass( const drawSurf_t* drawSurfs, const view
 	if( r_showShadows.GetInteger() )
 	{
 		// set the debug shadow color
-		SetFragmentParm( RENDERPARM_COLOR, colorMagenta.ToFloatPtr() );
+		renderProgManager.SetRenderParm( RENDERPARM_COLOR, colorMagenta.ToFloatPtr() );
 		if( r_showShadows.GetInteger() == 2 )
 		{
 			// draw filled in
@@ -2421,7 +2227,7 @@ void idRenderBackend::StencilShadowPass( const drawSurf_t* drawSurfs, const view
 			// set the local light position to allow the vertex program to project the shadow volume end cap to infinity
 			idVec4 localLight( 0.0f );
 			R_GlobalPointToLocal( drawSurf->space->modelMatrix, vLight->globalLightOrigin, localLight.ToVec3() );
-			SetVertexParm( RENDERPARM_LOCALLIGHTORIGIN, localLight.ToFloatPtr() );
+			renderProgManager.SetRenderParm( RENDERPARM_LOCALLIGHTORIGIN, localLight.ToFloatPtr() );
 			
 			currentSpace = drawSurf->space;
 		}
@@ -2470,190 +2276,7 @@ void idRenderBackend::StencilShadowPass( const drawSurf_t* drawSurfs, const view
 		
 		const bool renderZPass = ( drawSurf->renderZFail == 0 ) || r_forceZPassStencilShadows.GetBool();
 		
-		
-		if( renderZPass )
-		{
-			// Z-pass
-			glStencilOpSeparate( GL_FRONT, GL_KEEP, GL_KEEP, GL_INCR );
-			glStencilOpSeparate( GL_BACK, GL_KEEP, GL_KEEP, GL_DECR );
-		}
-		else if( r_useStencilShadowPreload.GetBool() )
-		{
-			// preload + Z-pass
-			glStencilOpSeparate( GL_FRONT, GL_KEEP, GL_DECR, GL_DECR );
-			glStencilOpSeparate( GL_BACK, GL_KEEP, GL_INCR, GL_INCR );
-		}
-		else
-		{
-			// Z-fail
-		}
-		
-		
-		// get vertex buffer
-		const vertCacheHandle_t vbHandle = drawSurf->shadowCache;
-		idVertexBuffer* vertexBuffer;
-		if( vertexCache.CacheIsStatic( vbHandle ) )
-		{
-			vertexBuffer = &vertexCache.staticData.vertexBuffer;
-		}
-		else
-		{
-			const uint64 frameNum = ( int )( vbHandle >> VERTCACHE_FRAME_SHIFT ) & VERTCACHE_FRAME_MASK;
-			if( frameNum != ( ( vertexCache.currentFrame - 1 ) & VERTCACHE_FRAME_MASK ) )
-			{
-				idLib::Warning( "RB_DrawElementsWithCounters, vertexBuffer == NULL" );
-				continue;
-			}
-			vertexBuffer = &vertexCache.frameData[vertexCache.drawListNum].vertexBuffer;
-		}
-		const int vertOffset = ( int )( vbHandle >> VERTCACHE_OFFSET_SHIFT ) & VERTCACHE_OFFSET_MASK;
-		
-		// get index buffer
-		const vertCacheHandle_t ibHandle = drawSurf->indexCache;
-		idIndexBuffer* indexBuffer;
-		if( vertexCache.CacheIsStatic( ibHandle ) )
-		{
-			indexBuffer = &vertexCache.staticData.indexBuffer;
-		}
-		else
-		{
-			const uint64 frameNum = ( int )( ibHandle >> VERTCACHE_FRAME_SHIFT ) & VERTCACHE_FRAME_MASK;
-			if( frameNum != ( ( vertexCache.currentFrame - 1 ) & VERTCACHE_FRAME_MASK ) )
-			{
-				idLib::Warning( "RB_DrawElementsWithCounters, indexBuffer == NULL" );
-				continue;
-			}
-			indexBuffer = &vertexCache.frameData[vertexCache.drawListNum].indexBuffer;
-		}
-		const uint64 indexOffset = ( int )( ibHandle >> VERTCACHE_OFFSET_SHIFT ) & VERTCACHE_OFFSET_MASK;
-		
-		RENDERLOG_PRINTF( "Binding Buffers: %p %p\n", vertexBuffer, indexBuffer );
-		
-		// RB: 64 bit fixes, changed GLuint to GLintptr
-		if( currentIndexBuffer != ( GLintptr )indexBuffer->GetAPIObject() || !r_useStateCaching.GetBool() )
-		{
-			glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, ( GLintptr )indexBuffer->GetAPIObject() );
-			currentIndexBuffer = ( GLintptr )indexBuffer->GetAPIObject();
-		}
-		
-		if( drawSurf->jointCache )
-		{
-			assert( renderProgManager.ShaderUsesJoints() );
-			
-			idJointBuffer jointBuffer;
-			if( !vertexCache.GetJointBuffer( drawSurf->jointCache, &jointBuffer ) )
-			{
-				idLib::Warning( "RB_DrawElementsWithCounters, jointBuffer == NULL" );
-				continue;
-			}
-			assert( ( jointBuffer.GetOffset() & ( glConfig.uniformBufferOffsetAlignment - 1 ) ) == 0 );
-			
-			const GLintptr ubo = reinterpret_cast< GLintptr >( jointBuffer.GetAPIObject() );
-			glBindBufferRange( GL_UNIFORM_BUFFER, 0, ubo, jointBuffer.GetOffset(), jointBuffer.GetNumJoints() * sizeof( idJointMat ) );
-			
-			if( ( vertexLayout != LAYOUT_DRAW_SHADOW_VERT_SKINNED ) || ( currentVertexBuffer != ( GLintptr )vertexBuffer->GetAPIObject() ) || !r_useStateCaching.GetBool() )
-			{
-				glBindBuffer( GL_ARRAY_BUFFER, ( GLintptr )vertexBuffer->GetAPIObject() );
-				currentVertexBuffer = ( GLintptr )vertexBuffer->GetAPIObject();
-				
-				glEnableVertexAttribArray( PC_ATTRIB_INDEX_VERTEX );
-				glDisableVertexAttribArray( PC_ATTRIB_INDEX_NORMAL );
-				glEnableVertexAttribArray( PC_ATTRIB_INDEX_COLOR );
-				glEnableVertexAttribArray( PC_ATTRIB_INDEX_COLOR2 );
-				glDisableVertexAttribArray( PC_ATTRIB_INDEX_ST );
-				glDisableVertexAttribArray( PC_ATTRIB_INDEX_TANGENT );
-				
-#if defined(USE_GLES2) || defined(USE_GLES3)
-				glVertexAttribPointer( PC_ATTRIB_INDEX_VERTEX, 4, GL_FLOAT, GL_FALSE, sizeof( idShadowVertSkinned ), ( void* )( vertOffset + SHADOWVERTSKINNED_XYZW_OFFSET ) );
-				glVertexAttribPointer( PC_ATTRIB_INDEX_COLOR, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof( idShadowVertSkinned ), ( void* )( vertOffset + SHADOWVERTSKINNED_COLOR_OFFSET ) );
-				glVertexAttribPointer( PC_ATTRIB_INDEX_COLOR2, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof( idShadowVertSkinned ), ( void* )( vertOffset + SHADOWVERTSKINNED_COLOR2_OFFSET ) );
-#else
-				glVertexAttribPointer( PC_ATTRIB_INDEX_VERTEX, 4, GL_FLOAT, GL_FALSE, sizeof( idShadowVertSkinned ), ( void* )( SHADOWVERTSKINNED_XYZW_OFFSET ) );
-				glVertexAttribPointer( PC_ATTRIB_INDEX_COLOR, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof( idShadowVertSkinned ), ( void* )( SHADOWVERTSKINNED_COLOR_OFFSET ) );
-				glVertexAttribPointer( PC_ATTRIB_INDEX_COLOR2, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof( idShadowVertSkinned ), ( void* )( SHADOWVERTSKINNED_COLOR2_OFFSET ) );
-#endif
-				
-				vertexLayout = LAYOUT_DRAW_SHADOW_VERT_SKINNED;
-			}
-			
-		}
-		else
-		{
-			if( ( vertexLayout != LAYOUT_DRAW_SHADOW_VERT ) || ( currentVertexBuffer != ( GLintptr )vertexBuffer->GetAPIObject() ) || !r_useStateCaching.GetBool() )
-			{
-				glBindBuffer( GL_ARRAY_BUFFER, ( GLintptr )vertexBuffer->GetAPIObject() );
-				currentVertexBuffer = ( GLintptr )vertexBuffer->GetAPIObject();
-				
-				glEnableVertexAttribArray( PC_ATTRIB_INDEX_VERTEX );
-				glDisableVertexAttribArray( PC_ATTRIB_INDEX_NORMAL );
-				glDisableVertexAttribArray( PC_ATTRIB_INDEX_COLOR );
-				glDisableVertexAttribArray( PC_ATTRIB_INDEX_COLOR2 );
-				glDisableVertexAttribArray( PC_ATTRIB_INDEX_ST );
-				glDisableVertexAttribArray( PC_ATTRIB_INDEX_TANGENT );
-				
-#if defined(USE_GLES2) || defined(USE_GLES3)
-				glVertexAttribPointer( PC_ATTRIB_INDEX_VERTEX, 4, GL_FLOAT, GL_FALSE, sizeof( idShadowVert ), ( void* )( vertOffset + SHADOWVERT_XYZW_OFFSET ) );
-#else
-				glVertexAttribPointer( PC_ATTRIB_INDEX_VERTEX, 4, GL_FLOAT, GL_FALSE, sizeof( idShadowVert ), ( void* )( SHADOWVERT_XYZW_OFFSET ) );
-#endif
-				
-				vertexLayout = LAYOUT_DRAW_SHADOW_VERT;
-			}
-		}
-		// RB end
-		
-		renderProgManager.CommitUniforms();
-		
-		if( drawSurf->jointCache )
-		{
-#if defined(USE_GLES3) //defined(USE_GLES2)
-			glDrawElements( GL_TRIANGLES, r_singleTriangle.GetBool() ? 3 : drawSurf->numIndexes, GL_INDEX_TYPE, ( triIndex_t* )indexOffset );
-#else
-			glDrawElementsBaseVertex( GL_TRIANGLES, r_singleTriangle.GetBool() ? 3 : drawSurf->numIndexes, GL_INDEX_TYPE, ( triIndex_t* )indexOffset, vertOffset / sizeof( idShadowVertSkinned ) );
-#endif
-		}
-		else
-		{
-#if defined(USE_GLES3)
-			glDrawElements( GL_TRIANGLES, r_singleTriangle.GetBool() ? 3 : drawSurf->numIndexes, GL_INDEX_TYPE, ( triIndex_t* )indexOffset );
-#else
-			glDrawElementsBaseVertex( GL_TRIANGLES, r_singleTriangle.GetBool() ? 3 : drawSurf->numIndexes, GL_INDEX_TYPE, ( triIndex_t* )indexOffset, vertOffset / sizeof( idShadowVert ) );
-#endif
-		}
-		
-		// RB: added stats
-		pc.c_shadowElements++;
-		pc.c_shadowIndexes += drawSurf->numIndexes;
-		// RB end
-		
-		if( !renderZPass && r_useStencilShadowPreload.GetBool() )
-		{
-			// render again with Z-pass
-			glStencilOpSeparate( GL_FRONT, GL_KEEP, GL_KEEP, GL_INCR );
-			glStencilOpSeparate( GL_BACK, GL_KEEP, GL_KEEP, GL_DECR );
-			
-			if( drawSurf->jointCache )
-			{
-#if defined(USE_GLES3)
-				glDrawElements( GL_TRIANGLES, r_singleTriangle.GetBool() ? 3 : drawSurf->numIndexes, GL_INDEX_TYPE, ( triIndex_t* )indexOffset );
-#else
-				glDrawElementsBaseVertex( GL_TRIANGLES, r_singleTriangle.GetBool() ? 3 : drawSurf->numIndexes, GL_INDEX_TYPE, ( triIndex_t* )indexOffset, vertOffset / sizeof( idShadowVertSkinned ) );
-#endif
-			}
-			else
-			{
-#if defined(USE_GLES3)
-				glDrawElements( GL_TRIANGLES, r_singleTriangle.GetBool() ? 3 : drawSurf->numIndexes, GL_INDEX_TYPE, ( triIndex_t* )indexOffset );
-#else
-				glDrawElementsBaseVertex( GL_TRIANGLES, r_singleTriangle.GetBool() ? 3 : drawSurf->numIndexes, GL_INDEX_TYPE, ( triIndex_t* )indexOffset, vertOffset / sizeof( idShadowVert ) );
-#endif
-			}
-			
-			// RB: added stats
-			pc.c_shadowElements++;
-			pc.c_shadowIndexes += drawSurf->numIndexes;
-			// RB end
-		}
+		DrawStencilShadowPass( drawSurf, renderZPass );
 	}
 	
 	// cleanup the shadow specific rendering state
@@ -2717,10 +2340,12 @@ void idRenderBackend::StencilSelectLight( const viewLight_t* vLight )
 	idRenderMatrix::Multiply( viewDef->worldSpace.mvp, vLight->inverseBaseLightProject, invProjectMVPMatrix );
 	RB_SetMVP( invProjectMVPMatrix );
 	
+#if !defined(ID_VULKAN)
 	// two-sided stencil test
 	glStencilOpSeparate( GL_FRONT, GL_KEEP, GL_REPLACE, GL_ZERO );
 	glStencilOpSeparate( GL_BACK, GL_KEEP, GL_ZERO, GL_REPLACE );
-	
+#endif
+
 	DrawElementsWithCounters( &zeroOneCubeSurface );
 	
 	// reset stencil state
@@ -2841,6 +2466,11 @@ idRenderBackend::ShadowMapPass
 */
 void idRenderBackend::ShadowMapPass( const drawSurf_t* drawSurfs, const viewLight_t* vLight, int side )
 {
+#if defined(ID_VULKAN)	
+	printf("ShadowMapPass: not implemented for ID_VULKAN\n");
+	return;
+#else
+
 	if( r_skipShadows.GetBool() )
 	{
 		return;
@@ -2855,7 +2485,7 @@ void idRenderBackend::ShadowMapPass( const drawSurf_t* drawSurfs, const viewLigh
 	
 	renderProgManager.BindShader_Depth();
 	
-	GL_SelectTexture( 0 );
+	//GL_SelectTexture( 0 );
 	
 	uint64 glState = 0;
 	
@@ -3253,7 +2883,7 @@ void idRenderBackend::ShadowMapPass( const drawSurf_t* drawSurfs, const viewLigh
 			/*
 			idVec4 localLight( 0.0f );
 			R_GlobalPointToLocal( drawSurf->space->modelMatrix, vLight->globalLightOrigin, localLight.ToVec3() );
-			SetVertexParm( RENDERPARM_LOCALLIGHTORIGIN, localLight.ToFloatPtr() );
+			renderProgManager.SetRenderParm( RENDERPARM_LOCALLIGHTORIGIN, localLight.ToFloatPtr() );
 			*/
 			
 			currentSpace = drawSurf->space;
@@ -3322,7 +2952,7 @@ void idRenderBackend::ShadowMapPass( const drawSurf_t* drawSurfs, const viewLigh
 #ifdef USE_CORE_PROFILE
 				GL_State( stageGLState );
 				idVec4 alphaTestValue( regs[ pStage->alphaTestRegister ] );
-				SetFragmentParm( RENDERPARM_ALPHA_TEST, alphaTestValue.ToFloatPtr() );
+				renderProgManager.SetRenderParm( RENDERPARM_ALPHA_TEST, alphaTestValue.ToFloatPtr() );
 #else
 				GL_State( stageGLState | GLS_ALPHATEST_FUNC_GREATER | GLS_ALPHATEST_MAKE_REF( idMath::Ftob( 255.0f * regs[ pStage->alphaTestRegister ] ) ) );
 #endif
@@ -3339,15 +2969,14 @@ void idRenderBackend::ShadowMapPass( const drawSurf_t* drawSurfs, const viewLigh
 				RB_SetVertexColorParms( SVC_IGNORE );
 				
 				// bind the texture
-				GL_SelectTexture( 0 );
-				pStage->texture.image->Bind();
+				GL_BindTexture( 0, pStage->texture.image->Bind());
 				
 				// set texture matrix and texGens
 				PrepareStageTexturing( pStage, drawSurf );
 				
 				// must render with less-equal for Z-Cull to work properly
 				assert( ( GL_GetCurrentState() & GLS_DEPTHFUNC_BITS ) == GLS_DEPTHFUNC_LESS );
-				
+
 				// draw it
 				DrawElementsWithCounters( drawSurf );
 				
@@ -3393,8 +3022,10 @@ void idRenderBackend::ShadowMapPass( const drawSurf_t* drawSurfs, const viewLigh
 	GL_Cull( CT_FRONT_SIDED );
 	
 #ifdef USE_CORE_PROFILE
-	SetFragmentParm( RENDERPARM_ALPHA_TEST, vec4_zero.ToFloatPtr() );
+	renderProgManager.SetRenderParm( RENDERPARM_ALPHA_TEST, vec4_zero.ToFloatPtr() );
 #endif
+
+#endif /* ID_VULKAN */
 }
 
 /*
@@ -3419,7 +3050,7 @@ void idRenderBackend::DrawInteractions( const viewDef_t* _viewDef )
 	renderLog.OpenMainBlock( MRB_DRAW_INTERACTIONS );
 	renderLog.OpenBlock( "RB_DrawInteractions" );
 	
-	GL_SelectTexture( 0 );
+	//GL_SelectTexture( 0 );
 	
 	
 	const bool useLightDepthBounds = r_useLightDepthBounds.GetBool() && !r_useShadowMapping.GetBool();
@@ -3604,7 +3235,7 @@ void idRenderBackend::DrawInteractions( const viewDef_t* _viewDef )
 	GL_State( GLS_DEFAULT );
 	
 	// unbind texture units
-	GL_SelectTexture( 0 );
+	//GL_SelectTexture( 0 );
 	
 	// reset depth bounds
 	if( useLightDepthBounds )
@@ -3645,7 +3276,7 @@ int idRenderBackend::DrawShaderPasses( const drawSurf_t* const* const drawSurfs,
 	
 	renderLog.OpenBlock( "RB_DrawShaderPasses" );
 	
-	GL_SelectTexture( 0 );
+	//GL_SelectTexture( 0 );
 	
 	currentSpace = ( const viewEntity_t* )1;	// using NULL makes /analyze think surf->space needs to be checked...
 	float currentGuiStereoOffset = 0.0f;
@@ -3728,17 +3359,17 @@ int idRenderBackend::DrawShaderPasses( const drawSurf_t* const* const drawSurfs,
 			// set eye position in local space
 			idVec4 localViewOrigin( 1.0f );
 			R_GlobalPointToLocal( space->modelMatrix, viewDef->renderView.vieworg, localViewOrigin.ToVec3() );
-			SetVertexParm( RENDERPARM_LOCALVIEWORIGIN, localViewOrigin.ToFloatPtr() );
+			renderProgManager.SetRenderParm( RENDERPARM_LOCALVIEWORIGIN, localViewOrigin.ToFloatPtr() );
 			
 			// set model Matrix
 			float modelMatrixTranspose[16];
 			R_MatrixTranspose( space->modelMatrix, modelMatrixTranspose );
-			SetVertexParms( RENDERPARM_MODELMATRIX_X, modelMatrixTranspose, 4 );
+			renderProgManager.SetRenderParms( RENDERPARM_MODELMATRIX_X, modelMatrixTranspose, 4 );
 			
 			// Set ModelView Matrix
 			float modelViewMatrixTranspose[16];
 			R_MatrixTranspose( space->modelViewMatrix, modelViewMatrixTranspose );
-			SetVertexParms( RENDERPARM_MODELVIEWMATRIX_X, modelViewMatrixTranspose, 4 );
+			renderProgManager.SetRenderParms( RENDERPARM_MODELVIEWMATRIX_X, modelViewMatrixTranspose, 4 );
 		}
 		
 		// change the scissor if needed
@@ -3820,11 +3451,15 @@ int idRenderBackend::DrawShaderPasses( const drawSurf_t* const* const drawSurfs,
 				
 				GL_State( stageGLState );
 				
+#if defined(ID_VULKAN)
+				renderProgManager.BindProgram(newStage->glslProgram);
+#else
 				// RB: CRITICAL BUGFIX: changed newStage->glslProgram to vertexProgram and fragmentProgram
 				// otherwise it will result in an out of bounds crash in RB_DrawElementsWithCounters
 				renderProgManager.BindShader( newStage->glslProgram, newStage->vertexProgram, newStage->fragmentProgram, false );
 				// RB end
-				
+#endif
+			
 				for( int j = 0; j < newStage->numVertexParms; j++ )
 				{
 					float parm[4];
@@ -3832,14 +3467,14 @@ int idRenderBackend::DrawShaderPasses( const drawSurf_t* const* const drawSurfs,
 					parm[1] = regs[ newStage->vertexParms[j][1] ];
 					parm[2] = regs[ newStage->vertexParms[j][2] ];
 					parm[3] = regs[ newStage->vertexParms[j][3] ];
-					SetVertexParm( ( renderParm_t )( RENDERPARM_USER + j ), parm );
+					renderProgManager.SetRenderParm( ( renderParm_t )( RENDERPARM_USER0 + j ), parm );
 				}
 				
 				// set rpEnableSkinning if the shader has optional support for skinning
 				if( surf->jointCache && renderProgManager.ShaderHasOptionalSkinning() )
 				{
 					const idVec4 skinningParm( 1.0f );
-					SetVertexParm( RENDERPARM_ENABLE_SKINNING, skinningParm.ToFloatPtr() );
+					renderProgManager.SetRenderParm( RENDERPARM_ENABLE_SKINNING, skinningParm.ToFloatPtr() );
 				}
 				
 				// bind texture units
@@ -3848,8 +3483,7 @@ int idRenderBackend::DrawShaderPasses( const drawSurf_t* const* const drawSurfs,
 					idImage* image = newStage->fragmentProgramImages[j];
 					if( image != NULL )
 					{
-						GL_SelectTexture( j );
-						image->Bind();
+						GL_BindTexture( j, image);
 					}
 				}
 				
@@ -3860,10 +3494,10 @@ int idRenderBackend::DrawShaderPasses( const drawSurf_t* const* const drawSurfs,
 				if( surf->jointCache && renderProgManager.ShaderHasOptionalSkinning() )
 				{
 					const idVec4 skinningParm( 0.0f );
-					SetVertexParm( RENDERPARM_ENABLE_SKINNING, skinningParm.ToFloatPtr() );
+					renderProgManager.SetRenderParm( RENDERPARM_ENABLE_SKINNING, skinningParm.ToFloatPtr() );
 				}
 				
-				GL_SelectTexture( 0 );
+				//GL_SelectTexture( 0 );
 				renderProgManager.Unbind();
 				
 				renderLog.CloseBlock();
@@ -3910,11 +3544,11 @@ int idRenderBackend::DrawShaderPasses( const drawSurf_t* const* const drawSurfs,
 				// use special shaders for bink cinematics
 				if( pStage->texture.cinematic )
 				{
-					if( ( stageGLState & GLS_OVERRIDE ) != 0 )
+					if ( ( stageGLState & GLS_OVERRIDE ) != 0 )
 					{
 						// This is a hack... Only SWF Guis set GLS_OVERRIDE
 						// Old style guis do not, and we don't want them to use the new GUI renederProg
-						renderProgManager.BindShader_TextureVertexColor_sRGB();
+						renderProgManager.BindShader_TextureVertexColor();//_sRGB();
 					}
 					else
 					{
@@ -3937,10 +3571,10 @@ int idRenderBackend::DrawShaderPasses( const drawSurf_t* const* const drawSurfs,
 						}
 						else
 						{
-							if( viewDef->is2Dgui )
+							if ( viewDef->is2Dgui )
 							{
 								// RB: 2D fullscreen drawing like warp or damage blend effects
-								renderProgManager.BindShader_TextureVertexColor_sRGB();
+								renderProgManager.BindShader_TextureVertexColor();//_sRGB();
 							}
 							else
 							{
@@ -4009,7 +3643,7 @@ int idRenderBackend::DrawShaderPasses( const drawSurf_t* const* const drawSurfs,
 	// disable stencil shadow test
 	GL_State( GLS_DEFAULT );
 	
-	GL_SelectTexture( 0 );
+	//GL_SelectTexture( 0 );
 	
 	renderLog.CloseBlock();
 	return i;
@@ -4063,10 +3697,10 @@ void idRenderBackend::T_BlendLight( const drawSurf_t* drawSurfs, const viewLight
 				R_GlobalPlaneToLocal( drawSurf->space->modelMatrix, vLight->lightProject[i], lightProjectInCurrentSpace[i] );
 			}
 			
-			SetVertexParm( RENDERPARM_TEXGEN_0_S, lightProjectInCurrentSpace[0].ToFloatPtr() );
-			SetVertexParm( RENDERPARM_TEXGEN_0_T, lightProjectInCurrentSpace[1].ToFloatPtr() );
-			SetVertexParm( RENDERPARM_TEXGEN_0_Q, lightProjectInCurrentSpace[2].ToFloatPtr() );
-			SetVertexParm( RENDERPARM_TEXGEN_1_S, lightProjectInCurrentSpace[3].ToFloatPtr() );	// falloff
+			renderProgManager.SetRenderParm( RENDERPARM_TEXGEN_0_S, lightProjectInCurrentSpace[0].ToFloatPtr() );
+			renderProgManager.SetRenderParm( RENDERPARM_TEXGEN_0_T, lightProjectInCurrentSpace[1].ToFloatPtr() );
+			renderProgManager.SetRenderParm( RENDERPARM_TEXGEN_0_Q, lightProjectInCurrentSpace[2].ToFloatPtr() );
+			renderProgManager.SetRenderParm( RENDERPARM_TEXGEN_1_S, lightProjectInCurrentSpace[3].ToFloatPtr() );	// falloff
 			
 			currentSpace = drawSurf->space;
 		}
@@ -4099,11 +3733,10 @@ void idRenderBackend::BlendLight( const drawSurf_t* drawSurfs, const drawSurf_t*
 	const float*	 regs = vLight->shaderRegisters;
 	
 	// texture 1 will get the falloff texture
-	GL_SelectTexture( 1 );
-	vLight->falloffImage->Bind();
+	GL_BindTexture( 1, vLight->falloffImage);
 	
 	// texture 0 will get the projected texture
-	GL_SelectTexture( 0 );
+	//GL_SelectTexture( 0 );
 	
 	renderProgManager.BindShader_BlendLight();
 	
@@ -4118,8 +3751,7 @@ void idRenderBackend::BlendLight( const drawSurf_t* drawSurfs, const drawSurf_t*
 		
 		GL_State( GLS_DEPTHMASK | stage->drawStateBits | GLS_DEPTHFUNC_EQUAL );
 		
-		GL_SelectTexture( 0 );
-		stage->texture.image->Bind();
+		GL_BindTexture( 0, stage->texture.image);
 		
 		if( stage->texture.hasMatrix )
 		{
@@ -4138,7 +3770,7 @@ void idRenderBackend::BlendLight( const drawSurf_t* drawSurfs, const drawSurf_t*
 		T_BlendLight( drawSurfs2, vLight );
 	}
 	
-	GL_SelectTexture( 0 );
+	//GL_SelectTexture( 0 );
 	
 	renderProgManager.Unbind();
 	renderLog.CloseBlock();
@@ -4202,10 +3834,10 @@ void idRenderBackend::T_BasicFog( const drawSurf_t* drawSurfs, const idPlane fog
 				}
 			}
 			
-			SetVertexParm( RENDERPARM_TEXGEN_0_S, localFogPlanes[0].ToFloatPtr() );
-			SetVertexParm( RENDERPARM_TEXGEN_0_T, localFogPlanes[1].ToFloatPtr() );
-			SetVertexParm( RENDERPARM_TEXGEN_1_T, localFogPlanes[2].ToFloatPtr() );
-			SetVertexParm( RENDERPARM_TEXGEN_1_S, localFogPlanes[3].ToFloatPtr() );
+			renderProgManager.SetRenderParm( RENDERPARM_TEXGEN_0_S, localFogPlanes[0].ToFloatPtr() );
+			renderProgManager.SetRenderParm( RENDERPARM_TEXGEN_0_T, localFogPlanes[1].ToFloatPtr() );
+			renderProgManager.SetRenderParm( RENDERPARM_TEXGEN_1_T, localFogPlanes[2].ToFloatPtr() );
+			renderProgManager.SetRenderParm( RENDERPARM_TEXGEN_1_S, localFogPlanes[3].ToFloatPtr() );
 			
 			currentSpace = ( inverseBaseLightProject == NULL ) ? drawSurf->space : NULL;
 		}
@@ -4261,12 +3893,10 @@ void idRenderBackend::FogPass( const drawSurf_t* drawSurfs,  const drawSurf_t* d
 	}
 	
 	// texture 0 is the falloff image
-	GL_SelectTexture( 0 );
-	globalImages->fogImage->Bind();
+	GL_BindTexture( 0, globalImages->fogImage);
 	
 	// texture 1 is the entering plane fade correction
-	GL_SelectTexture( 1 );
-	globalImages->fogEnterImage->Bind();
+	GL_BindTexture( 1, globalImages->fogEnterImage);
 	
 	// S is based on the view origin
 	const float s = vLight->fogPlane.Distance( viewDef->renderView.vieworg );
@@ -4315,7 +3945,7 @@ void idRenderBackend::FogPass( const drawSurf_t* drawSurfs,  const drawSurf_t* d
 	
 	GL_Cull( CT_FRONT_SIDED );
 	
-	GL_SelectTexture( 0 );
+	//GL_SelectTexture( 0 );
 	
 	renderProgManager.Unbind();
 	
@@ -4359,6 +3989,10 @@ void idRenderBackend::FogAllLights()
 // RB begin
 void idRenderBackend::CalculateAutomaticExposure()
 {
+#if defined(ID_VULKAN)
+	printf("CalculateAutomaticExposure not implemented for ID_VULKAN\n");
+	return;
+#else
 	int				i;
 	static float	image[64 * 64 * 4];
 	float           curTime;
@@ -4476,11 +4110,16 @@ void idRenderBackend::CalculateAutomaticExposure()
 	}
 	
 	//GL_CheckErrors();
+#endif	
 }
 
 
 void idRenderBackend::Tonemap( const viewDef_t* _viewDef )
 {
+#if defined(ID_VULKAN)
+	idLib::Printf("Tonemap not implmented for ID_VULKAN");
+	return;
+#else
 	RENDERLOG_PRINTF( "---------- RB_Tonemap( avg = %f, max = %f, key = %f, is2Dgui = %i ) ----------\n", hdrAverageLuminance, hdrMaxLuminance, hdrKey, ( int )viewDef->is2Dgui );
 	
 	//postProcessCommand_t* cmd = ( postProcessCommand_t* )data;
@@ -4498,22 +4137,19 @@ void idRenderBackend::Tonemap( const viewDef_t* _viewDef )
 	// set the window clipping
 	GL_Viewport( 0, 0, screenWidth, screenHeight );
 	GL_Scissor( 0, 0, screenWidth, screenHeight );
-	
-	GL_SelectTexture( 0 );
-	
+		
 #if defined(USE_HDR_MSAA)
 	if( glConfig.multisamples > 0 )
 	{
-		globalImages->currentRenderHDRImageNoMSAA->Bind();
+		GL_BindTexture(0, globalImages->currentRenderHDRImageNoMSAA);
 	}
 	else
 #endif
 	{
-		globalImages->currentRenderHDRImage->Bind();
+		GL_BindTexture(0, globalImages->currentRenderHDRImage);
 	}
 	
-	GL_SelectTexture( 1 );
-	globalImages->heatmap7Image->Bind();
+	GL_BindTexture( 1, globalImages->heatmap7Image);
 	
 	if( r_hdrDebug.GetBool() )
 	{
@@ -4560,21 +4196,23 @@ void idRenderBackend::Tonemap( const viewDef_t* _viewDef )
 		}
 	}
 	
-	SetFragmentParm( RENDERPARM_SCREENCORRECTIONFACTOR, screenCorrectionParm ); // rpScreenCorrectionFactor
+	renderProgManager.SetRenderParm( RENDERPARM_SCREENCORRECTIONFACTOR, screenCorrectionParm ); // rpScreenCorrectionFactor
 	
 	// Draw
 	DrawElementsWithCounters( &unitSquareSurface );
 	
-	GL_SelectTexture( 0 );
+	//GL_SelectTexture( 0 );
 	renderProgManager.Unbind();
 	
 	GL_State( GLS_DEFAULT );
 	GL_Cull( CT_FRONT_SIDED );
+#endif /* ID_VULKAN */
 }
 
 
 void idRenderBackend::Bloom( const viewDef_t* _viewDef )
 {
+#if !defined(ID_VULKAN)
 	if( _viewDef->is2Dgui || !r_useHDR.GetBool() )
 	{
 		return;
@@ -4604,11 +4242,11 @@ void idRenderBackend::Bloom( const viewDef_t* _viewDef )
 	
 	globalFramebuffers.bloomRenderFBO[ 0 ]->Bind();
 	
-	GL_SelectTexture( 0 );
+	//GL_SelectTexture( 0 );
 	
 	if( r_useHDR.GetBool() )
 	{
-		globalImages->currentRenderHDRImage->Bind();
+		GL_BindTexture(0, globalImages->currentRenderHDRImage->Bind());
 		
 		renderProgManager.BindShader_Brightpass();
 	}
@@ -4632,7 +4270,7 @@ void idRenderBackend::Bloom( const viewDef_t* _viewDef )
 	screenCorrectionParm[1] = hdrAverageLuminance;
 	screenCorrectionParm[2] = hdrMaxLuminance;
 	screenCorrectionParm[3] = 1.0f;
-	SetFragmentParm( RENDERPARM_SCREENCORRECTIONFACTOR, screenCorrectionParm ); // rpScreenCorrectionFactor
+	renderProgManager.SetRenderParm( RENDERPARM_SCREENCORRECTIONFACTOR, screenCorrectionParm ); // rpScreenCorrectionFactor
 	
 	float overbright[4];
 	if( r_useHDR.GetBool() )
@@ -4656,7 +4294,7 @@ void idRenderBackend::Bloom( const viewDef_t* _viewDef )
 		overbright[2] = 0;
 		overbright[3] = 0;
 	}
-	SetFragmentParm( RENDERPARM_OVERBRIGHT, overbright ); // rpOverbright
+	renderProgManager.SetRenderParm( RENDERPARM_OVERBRIGHT, overbright ); // rpOverbright
 	
 	// Draw
 	DrawElementsWithCounters( &unitSquareSurface );
@@ -4693,11 +4331,13 @@ void idRenderBackend::Bloom( const viewDef_t* _viewDef )
 	
 	GL_State( GLS_DEFAULT );
 	GL_Cull( CT_FRONT_SIDED );
+#endif
 }
 
 
 void idRenderBackend::DrawScreenSpaceAmbientOcclusion( const viewDef_t* _viewDef )
 {
+#if !defined(ID_VULKAN)
 	if( !_viewDef->viewEntitys || _viewDef->is2Dgui )
 	{
 		// 3D views only
@@ -4795,8 +4435,10 @@ void idRenderBackend::DrawScreenSpaceAmbientOcclusion( const viewDef_t* _viewDef
 	currentSpace = &viewDef->worldSpace;
 	RB_SetMVP( viewDef->worldSpace.mvp );
 	
+#if !defined(ID_VULKAN)
 	const bool hdrIsActive = ( r_useHDR.GetBool() && globalFramebuffers.hdrFBO != NULL && globalFramebuffers.hdrFBO->IsBound() );
-	
+#endif
+
 	int screenWidth = renderSystem->GetWidth();
 	int screenHeight = renderSystem->GetHeight();
 	
@@ -4807,7 +4449,7 @@ void idRenderBackend::DrawScreenSpaceAmbientOcclusion( const viewDef_t* _viewDef
 		
 		glClearColor( 0, 0, 0, 1 );
 		
-		GL_SelectTexture( 0 );
+		//GL_SelectTexture( 0 );
 		//globalImages->currentDepthImage->Bind();
 		
 		for( int i = 0; i < MAX_HIERARCHICAL_ZBUFFERS; i++ )
@@ -4832,8 +4474,7 @@ void idRenderBackend::DrawScreenSpaceAmbientOcclusion( const viewDef_t* _viewDef
 			{
 				renderProgManager.BindShader_AmbientOcclusionMinify();
 				
-				GL_SelectTexture( 0 );
-				globalImages->hierarchicalZbufferImage->Bind();
+				GL_BindTexture( 0, globalImages->hierarchicalZbufferImage);
 			}
 			
 			float jitterTexScale[4];
@@ -4841,14 +4482,14 @@ void idRenderBackend::DrawScreenSpaceAmbientOcclusion( const viewDef_t* _viewDef
 			jitterTexScale[1] = 0;
 			jitterTexScale[2] = 0;
 			jitterTexScale[3] = 0;
-			SetFragmentParm( RENDERPARM_JITTERTEXSCALE, jitterTexScale ); // rpJitterTexScale
+			renderProgManager.SetRenderParm( RENDERPARM_JITTERTEXSCALE, jitterTexScale ); // rpJitterTexScale
 #if 1
 			float screenCorrectionParm[4];
 			screenCorrectionParm[0] = 1.0f / width;
 			screenCorrectionParm[1] = 1.0f / height;
 			screenCorrectionParm[2] = width;
 			screenCorrectionParm[3] = height;
-			SetFragmentParm( RENDERPARM_SCREENCORRECTIONFACTOR, screenCorrectionParm ); // rpScreenCorrectionFactor
+			renderProgManager.SetRenderParm( RENDERPARM_SCREENCORRECTIONFACTOR, screenCorrectionParm ); // rpScreenCorrectionFactor
 #endif
 			
 			DrawElementsWithCounters( &unitSquareSurface );
@@ -4878,11 +4519,13 @@ void idRenderBackend::DrawScreenSpaceAmbientOcclusion( const viewDef_t* _viewDef
 			GL_State( GLS_SRCBLEND_DST_COLOR | GLS_DSTBLEND_ZERO | GLS_ALPHAMASK | GLS_DEPTHMASK | GLS_DEPTHFUNC_ALWAYS );
 		}
 		
+#if !defined(ID_VULKAN)		
 		if( hdrIsActive )
 		{
 			globalFramebuffers.hdrFBO->Bind();
 		}
 		else
+#endif			
 		{
 			Framebuffer::Unbind();
 		}
@@ -4895,7 +4538,7 @@ void idRenderBackend::DrawScreenSpaceAmbientOcclusion( const viewDef_t* _viewDef
 	screenCorrectionParm[1] = 1.0f / screenHeight;
 	screenCorrectionParm[2] = screenWidth;
 	screenCorrectionParm[3] = screenHeight;
-	SetFragmentParm( RENDERPARM_SCREENCORRECTIONFACTOR, screenCorrectionParm ); // rpScreenCorrectionFactor
+	renderProgManager.SetRenderParm( RENDERPARM_SCREENCORRECTIONFACTOR, screenCorrectionParm ); // rpScreenCorrectionFactor
 	
 #if 0
 	// RB: set unprojection matrices so we can convert zbuffer values back to camera and world spaces
@@ -4907,10 +4550,10 @@ void idRenderBackend::DrawScreenSpaceAmbientOcclusion( const viewDef_t* _viewDef
 		idLib::Warning( "cameraToWorldMatrix invert failed" );
 	}
 	
-	SetVertexParms( RENDERPARM_MODELMATRIX_X, cameraToWorldMatrix[0], 4 );
-	//SetVertexParms( RENDERPARM_MODELMATRIX_X, viewDef->unprojectionToWorldRenderMatrix[0], 4 );
+	renderProgManager.SetRenderParms( RENDERPARM_MODELMATRIX_X, cameraToWorldMatrix[0], 4 );
+	//renderProgManager.SetRenderParms( RENDERPARM_MODELMATRIX_X, viewDef->unprojectionToWorldRenderMatrix[0], 4 );
 #endif
-	SetVertexParms( RENDERPARM_MODELMATRIX_X, viewDef->unprojectionToCameraRenderMatrix[0], 4 );
+	renderProgManager.SetRenderParms( RENDERPARM_MODELMATRIX_X, viewDef->unprojectionToCameraRenderMatrix[0], 4 );
 	
 	
 	float jitterTexOffset[4];
@@ -4926,19 +4569,17 @@ void idRenderBackend::DrawScreenSpaceAmbientOcclusion( const viewDef_t* _viewDef
 	}
 	jitterTexOffset[2] = viewDef->renderView.time[0] * 0.001f;
 	jitterTexOffset[3] = 0.0f;
-	SetFragmentParm( RENDERPARM_JITTERTEXOFFSET, jitterTexOffset ); // rpJitterTexOffset
+	renderProgManager.SetRenderParm( RENDERPARM_JITTERTEXOFFSET, jitterTexOffset ); // rpJitterTexOffset
 	
-	GL_SelectTexture( 0 );
-	globalImages->currentNormalsImage->Bind();
+	GL_BindTexture( 0, globalImages->currentNormalsImage);
 	
-	GL_SelectTexture( 1 );
 	if( r_useHierarchicalDepthBuffer.GetBool() )
 	{
-		globalImages->hierarchicalZbufferImage->Bind();
+		GL_BindTexture( 1, globalImages->hierarchicalZbufferImage);
 	}
 	else
 	{
-		globalImages->currentDepthImage->Bind();
+		GL_BindTexture( 1, globalImages->currentDepthImage);
 	}
 	
 	DrawElementsWithCounters( &unitSquareSurface );
@@ -4958,10 +4599,9 @@ void idRenderBackend::DrawScreenSpaceAmbientOcclusion( const viewDef_t* _viewDef
 		jitterTexScale[1] = 0;
 		jitterTexScale[2] = 0;
 		jitterTexScale[3] = 0;
-		SetFragmentParm( RENDERPARM_JITTERTEXSCALE, jitterTexScale ); // rpJitterTexScale
+		renderProgManager.SetRenderParm( RENDERPARM_JITTERTEXSCALE, jitterTexScale ); // rpJitterTexScale
 		
-		GL_SelectTexture( 2 );
-		globalImages->ambientOcclusionImage[0]->Bind();
+		GL_BindTexture( 2, globalImages->ambientOcclusionImage[0]);
 		
 		DrawElementsWithCounters( &unitSquareSurface );
 #endif
@@ -4988,10 +4628,9 @@ void idRenderBackend::DrawScreenSpaceAmbientOcclusion( const viewDef_t* _viewDef
 		jitterTexScale[1] = 1;
 		jitterTexScale[2] = 0;
 		jitterTexScale[3] = 0;
-		SetFragmentParm( RENDERPARM_JITTERTEXSCALE, jitterTexScale ); // rpJitterTexScale
+		renderProgManager.SetRenderParm( RENDERPARM_JITTERTEXSCALE, jitterTexScale ); // rpJitterTexScale
 		
-		GL_SelectTexture( 2 );
-		globalImages->ambientOcclusionImage[1]->Bind();
+		GL_BindTexture( 2, globalImages->ambientOcclusionImage[1]);
 		
 		DrawElementsWithCounters( &unitSquareSurface );
 	}
@@ -5002,10 +4641,15 @@ void idRenderBackend::DrawScreenSpaceAmbientOcclusion( const viewDef_t* _viewDef
 	GL_Cull( CT_FRONT_SIDED );
 	
 	//GL_CheckErrors();
+#endif /* ID_VULKAN */
 }
 
 void idRenderBackend::DrawScreenSpaceGlobalIllumination( const viewDef_t* _viewDef )
 {
+#if defined(ID_VULKAN)
+	printf("DrawScreenSpaceGlobalIllumination not implemented for ID_VULKAN\n");
+	return;
+#else
 	if( !_viewDef->viewEntitys || _viewDef->is2Dgui )
 	{
 		// 3D views only
@@ -5050,8 +4694,7 @@ void idRenderBackend::DrawScreenSpaceGlobalIllumination( const viewDef_t* _viewD
 		
 		glClearColor( 0, 0, 0, 1 );
 		
-		GL_SelectTexture( 0 );
-		//globalImages->currentDepthImage->Bind();
+		GL_BindTexture( 0, globalImages->currentDepthImage);
 		
 		for( int i = 0; i < MAX_HIERARCHICAL_ZBUFFERS; i++ )
 		{
@@ -5075,8 +4718,7 @@ void idRenderBackend::DrawScreenSpaceGlobalIllumination( const viewDef_t* _viewD
 			{
 				renderProgManager.BindShader_AmbientOcclusionMinify();
 				
-				GL_SelectTexture( 0 );
-				globalImages->hierarchicalZbufferImage->Bind();
+				GL_BindTexture( 0, globalImages->hierarchicalZbufferImage);
 			}
 			
 			float jitterTexScale[4];
@@ -5084,14 +4726,14 @@ void idRenderBackend::DrawScreenSpaceGlobalIllumination( const viewDef_t* _viewD
 			jitterTexScale[1] = 0;
 			jitterTexScale[2] = 0;
 			jitterTexScale[3] = 0;
-			SetFragmentParm( RENDERPARM_JITTERTEXSCALE, jitterTexScale ); // rpJitterTexScale
+			renderProgManager.SetRenderParm( RENDERPARM_JITTERTEXSCALE, jitterTexScale ); // rpJitterTexScale
 #if 1
 			float screenCorrectionParm[4];
 			screenCorrectionParm[0] = 1.0f / width;
 			screenCorrectionParm[1] = 1.0f / height;
 			screenCorrectionParm[2] = width;
 			screenCorrectionParm[3] = height;
-			SetFragmentParm( RENDERPARM_SCREENCORRECTIONFACTOR, screenCorrectionParm ); // rpScreenCorrectionFactor
+			renderProgManager.SetRenderParm( RENDERPARM_SCREENCORRECTIONFACTOR, screenCorrectionParm ); // rpScreenCorrectionFactor
 #endif
 			
 			DrawElementsWithCounters( &unitSquareSurface );
@@ -5145,7 +4787,7 @@ void idRenderBackend::DrawScreenSpaceGlobalIllumination( const viewDef_t* _viewD
 	screenCorrectionParm[1] = 1.0f / screenHeight;
 	screenCorrectionParm[2] = screenWidth;
 	screenCorrectionParm[3] = screenHeight;
-	SetFragmentParm( RENDERPARM_SCREENCORRECTIONFACTOR, screenCorrectionParm ); // rpScreenCorrectionFactor
+	renderProgManager.SetRenderParm( RENDERPARM_SCREENCORRECTIONFACTOR, screenCorrectionParm ); // rpScreenCorrectionFactor
 	
 #if 0
 	// RB: set unprojection matrices so we can convert zbuffer values back to camera and world spaces
@@ -5157,10 +4799,10 @@ void idRenderBackend::DrawScreenSpaceGlobalIllumination( const viewDef_t* _viewD
 		idLib::Warning( "cameraToWorldMatrix invert failed" );
 	}
 	
-	SetVertexParms( RENDERPARM_MODELMATRIX_X, cameraToWorldMatrix[0], 4 );
-	//SetVertexParms( RENDERPARM_MODELMATRIX_X, viewDef->unprojectionToWorldRenderMatrix[0], 4 );
+	renderProgManager.SetRenderParms( RENDERPARM_MODELMATRIX_X, cameraToWorldMatrix[0], 4 );
+	//renderProgManager.SetRenderParms( RENDERPARM_MODELMATRIX_X, viewDef->unprojectionToWorldRenderMatrix[0], 4 );
 #endif
-	SetVertexParms( RENDERPARM_MODELMATRIX_X, viewDef->unprojectionToCameraRenderMatrix[0], 4 );
+	renderProgManager.SetRenderParms( RENDERPARM_MODELMATRIX_X, viewDef->unprojectionToCameraRenderMatrix[0], 4 );
 	
 	
 	float jitterTexOffset[4];
@@ -5176,29 +4818,26 @@ void idRenderBackend::DrawScreenSpaceGlobalIllumination( const viewDef_t* _viewD
 	}
 	jitterTexOffset[2] = viewDef->renderView.time[0] * 0.001f;
 	jitterTexOffset[3] = 0.0f;
-	SetFragmentParm( RENDERPARM_JITTERTEXOFFSET, jitterTexOffset ); // rpJitterTexOffset
+	renderProgManager.SetRenderParm( RENDERPARM_JITTERTEXOFFSET, jitterTexOffset ); // rpJitterTexOffset
 	
-	GL_SelectTexture( 0 );
-	globalImages->currentNormalsImage->Bind();
+	GL_BindTexture( 0, globalImages->currentNormalsImage);
 	
-	GL_SelectTexture( 1 );
 	if( r_useHierarchicalDepthBuffer.GetBool() )
 	{
-		globalImages->hierarchicalZbufferImage->Bind();
+		GL_BindTexture( 1, globalImages->hierarchicalZbufferImage);
 	}
 	else
 	{
-		globalImages->currentDepthImage->Bind();
+		GL_BindTexture(1, globalImages->currentDepthImage);
 	}
 	
-	GL_SelectTexture( 2 );
 	if( hdrIsActive )
 	{
-		globalImages->currentRenderHDRImage->Bind();
+		GL_BindTexture( 2, globalImages->currentRenderHDRImage);
 	}
 	else
 	{
-		globalImages->currentRenderImage->Bind();
+		GL_BindTexture(2, globalImages->currentRenderImage);
 	}
 	
 	DrawElementsWithCounters( &unitSquareSurface );
@@ -5218,10 +4857,9 @@ void idRenderBackend::DrawScreenSpaceGlobalIllumination( const viewDef_t* _viewD
 		jitterTexScale[1] = 0;
 		jitterTexScale[2] = 0;
 		jitterTexScale[3] = 0;
-		SetFragmentParm( RENDERPARM_JITTERTEXSCALE, jitterTexScale ); // rpJitterTexScale
+		renderProgManager.SetRenderParm( RENDERPARM_JITTERTEXSCALE, jitterTexScale ); // rpJitterTexScale
 		
-		GL_SelectTexture( 2 );
-		globalImages->ambientOcclusionImage[0]->Bind();
+		GL_BindTexture( 2, globalImages->ambientOcclusionImage[0]);
 		
 		DrawElementsWithCounters( &unitSquareSurface );
 #endif
@@ -5254,10 +4892,9 @@ void idRenderBackend::DrawScreenSpaceGlobalIllumination( const viewDef_t* _viewD
 		jitterTexScale[1] = 1;
 		jitterTexScale[2] = 0;
 		jitterTexScale[3] = 0;
-		SetFragmentParm( RENDERPARM_JITTERTEXSCALE, jitterTexScale ); // rpJitterTexScale
+		renderProgManager.SetRenderParm( RENDERPARM_JITTERTEXSCALE, jitterTexScale ); // rpJitterTexScale
 		
-		GL_SelectTexture( 2 );
-		globalImages->ambientOcclusionImage[1]->Bind();
+		GL_BindTexture( 2, globalImages->ambientOcclusionImage[1]);
 		
 		DrawElementsWithCounters( &unitSquareSurface );
 	}
@@ -5268,6 +4905,7 @@ void idRenderBackend::DrawScreenSpaceGlobalIllumination( const viewDef_t* _viewD
 	GL_Cull( CT_FRONT_SIDED );
 	
 	//GL_CheckErrors();
+#endif
 }
 // RB end
 
@@ -5278,6 +4916,63 @@ BACKEND COMMANDS
 
 =========================================================================================================
 */
+
+/*
+=============
+idRenderBackend::ExecuteBackEndCommands
+
+This function will be called syncronously if running without
+smp extensions, or asyncronously by another thread.
+=============
+*/
+void idRenderBackend::ExecuteBackEndCommands( const emptyCommand_t* cmds )
+{
+	CheckCVars();
+
+	//resolutionScale.SetCurrentGPUFrameTime( commonLocal.m_mainFrameTiming.gpuTime );
+
+	ResizeImages();
+
+	// renderLog.StartFrame();
+	GL_StartFrame();
+
+	uint64 backEndStartTime = Sys_Microseconds();
+
+	// needed for editor rendering
+	GL_SetDefaultState();
+
+	for( ; cmds != NULL; cmds = ( const emptyCommand_t* )cmds->next )
+	{
+		switch( cmds->commandId ) {
+			case RC_NOP:
+				break;
+			case RC_DRAW_VIEW_GUI:
+			case RC_DRAW_VIEW_3D:
+				DrawView( cmds, 0 );
+				break;
+			case RC_COPY_RENDER:
+				CopyRender( cmds );
+				break;
+			case RC_SET_BUFFER:
+				//RB_SetBuffer( cmds );
+				//c_setBuffers++;
+				break;
+			case RC_POST_PROCESS:
+				PostProcess( cmds );
+				break;
+			default:
+				idLib::Error( "ExecuteBackEndCommands: bad commandId" );
+				break;
+		}
+	}
+
+	GL_EndFrame();
+
+	// // stop rendering on this thread
+	// //m_pc.totalMicroSec = Sys_Microseconds() - backEndStartTime;
+
+	// renderLog.EndFrame();
+}
 
 /*
 ==================
@@ -5315,19 +5010,26 @@ void idRenderBackend::DrawViewInternal( const viewDef_t* _viewDef, const int ste
 	//-------------------------------------------------
 	ResetViewportAndScissorToDefaultCamera( _viewDef );
 	
+#if !defined(ID_VULKAN)
 	faceCulling = -1;		// force face culling to set next time
-	
+#endif
+
 	// ensures that depth writes are enabled for the depth clear
 	GL_State( GLS_DEFAULT );
 	
 	//GL_CheckErrors();
-	
+
+#if !defined(ID_VULKAN)	
+	bool useHDR = false;
+#else
 	// RB begin
 	bool useHDR = r_useHDR.GetBool() && !_viewDef->is2Dgui;
-	
+#endif
+
 	// Clear the depth buffer and clear the stencil to 128 for stencil shadows as well as gui masking
 	GL_Clear( false, true, true, STENCIL_SHADOW_TEST_VALUE, 0.0f, 0.0f, 0.0f, 0.0f, useHDR );
-	
+
+#if !defined(ID_VULKAN)		
 	if( useHDR )
 	{
 		globalFramebuffers.hdrFBO->Bind();
@@ -5337,13 +5039,14 @@ void idRenderBackend::DrawViewInternal( const viewDef_t* _viewDef, const int ste
 		Framebuffer::Unbind();
 	}
 	// RB end
-	
+#endif
+
 	//GL_CheckErrors();
 	
 	// normal face culling
 	GL_Cull( CT_FRONT_SIDED );
 	
-#if defined(USE_CORE_PROFILE) && !defined(USE_GLES2) && !defined(USE_GLES3)
+#if defined(USE_CORE_PROFILE) && !defined(USE_GLES2) && !defined(USE_GLES3) && !defined(ID_VULKAN)
 	// bind one global Vertex Array Object (VAO)
 	glBindVertexArray( glConfig.global_vao );
 #endif
@@ -5361,7 +5064,7 @@ void idRenderBackend::DrawViewInternal( const viewDef_t* _viewDef, const int ste
 		parm[2] = viewDef->renderView.vieworg[2];
 		parm[3] = 1.0f;
 		
-		SetVertexParm( RENDERPARM_GLOBALEYEPOS, parm ); // rpGlobalEyePos
+		renderProgManager.SetRenderParm( RENDERPARM_GLOBALEYEPOS, parm ); // rpGlobalEyePos
 		
 		// sets overbright to make world brighter
 		// This value is baked into the specularScale and diffuseScale values so
@@ -5373,12 +5076,12 @@ void idRenderBackend::DrawViewInternal( const viewDef_t* _viewDef, const int ste
 		parm[1] = overbright;
 		parm[2] = overbright;
 		parm[3] = overbright;
-		SetFragmentParm( RENDERPARM_OVERBRIGHT, parm );
+		renderProgManager.SetRenderParm( RENDERPARM_OVERBRIGHT, parm );
 		
 		// Set Projection Matrix
 		float projMatrixTranspose[16];
 		R_MatrixTranspose( viewDef->projectionMatrix, projMatrixTranspose );
-		SetVertexParms( RENDERPARM_PROJMATRIX_X, projMatrixTranspose, 4 );
+		renderProgManager.SetRenderParms( RENDERPARM_PROJMATRIX_X, projMatrixTranspose, 4 );
 	}
 	
 	//-------------------------------------------------
@@ -5390,7 +5093,7 @@ void idRenderBackend::DrawViewInternal( const viewDef_t* _viewDef, const int ste
 	// FIXME, OPTIMIZE: merge this with FillDepthBufferFast like in a light prepass deferred renderer
 	//
 	// fill the geometric buffer with normals and roughness
-	//-------------------------------------------------
+	//---------I----------------------------------------
 	AmbientPass( drawSurfs, numDrawSurfs, true );
 	
 	//-------------------------------------------------
@@ -5409,7 +5112,7 @@ void idRenderBackend::DrawViewInternal( const viewDef_t* _viewDef, const int ste
 	if( ( r_motionBlur.GetInteger() > 0 ||  r_useSSAO.GetBool() || r_useSSGI.GetBool() ) && !r_useHDR.GetBool() )
 	{
 		const idScreenRect& viewport = viewDef->viewport;
-		globalImages->currentDepthImage->CopyDepthbuffer( viewport.x1, viewport.y1, viewport.GetWidth(), viewport.GetHeight() );
+		GL_CopyDepthBuffer(globalImages->currentDepthImage, viewport.x1, viewport.y1, viewport.GetWidth(), viewport.GetHeight() );
 	}
 	
 	//-------------------------------------------------
@@ -5462,10 +5165,10 @@ void idRenderBackend::DrawViewInternal( const viewDef_t* _viewDef, const int ste
 		
 		RENDERLOG_PRINTF( "Resolve to %i x %i buffer\n", w, h );
 		
-		GL_SelectTexture( 0 );
+		//GL_SelectTexture( 0 );
 		
 		// resolve the screen
-		globalImages->currentRenderImage->CopyFramebuffer( x, y, w, h );
+		GL_CopyFrameBuffer(globalImages->currentRenderImage, x, y, w, h );
 		currentRenderCopied = true;
 		
 		// RENDERPARM_SCREENCORRECTIONFACTOR amd RENDERPARM_WINDOWCOORD overlap
@@ -5477,7 +5180,7 @@ void idRenderBackend::DrawViewInternal( const viewDef_t* _viewDef, const int ste
 		screenCorrectionParm[1] = 1.0f;
 		screenCorrectionParm[2] = 0.0f;
 		screenCorrectionParm[3] = 1.0f;
-		SetFragmentParm( RENDERPARM_SCREENCORRECTIONFACTOR, screenCorrectionParm ); // rpScreenCorrectionFactor
+		renderProgManager.SetRenderParm( RENDERPARM_SCREENCORRECTIONFACTOR, screenCorrectionParm ); // rpScreenCorrectionFactor
 		
 		// window coord to 0.0 to 1.0 conversion
 		float windowCoordParm[4];
@@ -5485,7 +5188,7 @@ void idRenderBackend::DrawViewInternal( const viewDef_t* _viewDef, const int ste
 		windowCoordParm[1] = 1.0f / h;
 		windowCoordParm[2] = 0.0f;
 		windowCoordParm[3] = 1.0f;
-		SetFragmentParm( RENDERPARM_WINDOWCOORD, windowCoordParm ); // rpWindowCoord
+		renderProgManager.SetRenderParm( RENDERPARM_WINDOWCOORD, windowCoordParm ); // rpWindowCoord
 		
 		// render the remaining surfaces
 		renderLog.OpenMainBlock( MRB_DRAW_SHADER_PASSES_POST );
@@ -5499,6 +5202,7 @@ void idRenderBackend::DrawViewInternal( const viewDef_t* _viewDef, const int ste
 	DBG_RenderDebugTools( drawSurfs, numDrawSurfs );
 	
 	// RB: convert back from HDR to LDR range
+#if !defined(ID_VULKAN)	
 	if( useHDR )
 	{
 		/*
@@ -5555,7 +5259,8 @@ void idRenderBackend::DrawViewInternal( const viewDef_t* _viewDef, const int ste
 		
 		Tonemap( _viewDef );
 	}
-	
+#endif
+
 	Bloom( _viewDef );
 	// RB end
 	
@@ -5571,6 +5276,7 @@ Experimental feature
 */
 void idRenderBackend::MotionBlur()
 {
+#if !defined(ID_VULKAN)
 	if( !viewDef->viewEntitys )
 	{
 		// 3D views only
@@ -5593,8 +5299,7 @@ void idRenderBackend::MotionBlur()
 	GL_State( GLS_COLORMASK | GLS_DEPTHMASK );
 	glClear( GL_COLOR_BUFFER_BIT );
 	GL_Color( 0, 0, 0, 0 );
-	GL_SelectTexture( 0 );
-	globalImages->blackImage->Bind();
+	GL_BindTexture( 0, globalImages->blackImage);
 	currentSpace = NULL;
 	
 	drawSurf_t** drawSurfs = ( drawSurf_t** )&viewDef->drawSurfs[0];
@@ -5664,15 +5369,14 @@ void idRenderBackend::MotionBlur()
 	
 	// let the fragment program know how many samples we are going to use
 	idVec4 samples( ( float )( 1 << r_motionBlur.GetInteger() ) );
-	SetFragmentParm( RENDERPARM_OVERBRIGHT, samples.ToFloatPtr() );
+	renderProgManager.SetRenderParm( RENDERPARM_OVERBRIGHT, samples.ToFloatPtr() );
 	
-	GL_SelectTexture( 0 );
-	globalImages->currentRenderImage->Bind();
-	GL_SelectTexture( 1 );
-	globalImages->currentDepthImage->Bind();
+	GL_BindTexture( 0, globalImages->currentRenderImage);
+	GL_BindTexture( 1, globalImages->currentDepthImage);
 	
 	DrawElementsWithCounters( &unitSquareSurface );
 	GL_CheckErrors();
+#endif
 }
 
 /*
@@ -5776,7 +5480,7 @@ void idRenderBackend::CopyRender( const void* data )
 	
 	if( cmd->image )
 	{
-		cmd->image->CopyFramebuffer( cmd->x, cmd->y, cmd->imageWidth, cmd->imageHeight );
+		GL_CopyFrameBuffer(cmd->image, cmd->x, cmd->y, cmd->imageWidth, cmd->imageHeight );
 	}
 	
 	if( cmd->clearColorAfterCopy )
@@ -5794,6 +5498,7 @@ idRenderBackend::PostProcess
 extern idCVar rs_enable;
 void idRenderBackend::PostProcess( const void* data )
 {
+#if !defined(ID_VULKAN)
 	// only do the post process step if resolution scaling is enabled. Prevents the unnecessary copying of the framebuffer and
 	// corresponding full screen quad pass.
 	if( rs_enable.GetInteger() == 0 && !r_useFilmicPostProcessEffects.GetBool() && r_antiAliasing.GetInteger() == 0 )
@@ -5852,15 +5557,14 @@ void idRenderBackend::PostProcess( const void* data )
 		screenCorrectionParm[1] = 1.0f / screenHeight;
 		screenCorrectionParm[2] = screenWidth;
 		screenCorrectionParm[3] = screenHeight;
-		SetFragmentParm( RENDERPARM_SCREENCORRECTIONFACTOR, screenCorrectionParm ); // rpScreenCorrectionFactor
+		renderProgManager.SetRenderParm( RENDERPARM_SCREENCORRECTIONFACTOR, screenCorrectionParm ); // rpScreenCorrectionFactor
 		
 		globalFramebuffers.smaaEdgesFBO->Bind();
 		
 		glClearColor( 0, 0, 0, 0 );
 		glClear( GL_COLOR_BUFFER_BIT );
 		
-		GL_SelectTexture( 0 );
-		globalImages->smaaInputImage->Bind();
+		GL_BindTexture( 0, globalImages->smaaInputImage);
 		
 		renderProgManager.BindShader_SMAA_EdgeDetection();
 		DrawElementsWithCounters( &unitSquareSurface );
@@ -5873,14 +5577,11 @@ void idRenderBackend::PostProcess( const void* data )
 		
 		glClear( GL_COLOR_BUFFER_BIT );
 		
-		GL_SelectTexture( 0 );
-		globalImages->smaaEdgesImage->Bind();
+		GL_BindTexture( 0, globalImages->smaaEdgesImage);
 		
-		GL_SelectTexture( 1 );
-		globalImages->smaaAreaImage->Bind();
+		GL_BindTexture( 1, globalImages->smaaAreaImage);
 		
-		GL_SelectTexture( 2 );
-		globalImages->smaaSearchImage->Bind();
+		GL_BindTexture( 2, globalImages->smaaSearchImage);
 		
 		renderProgManager.BindShader_SMAA_BlendingWeightCalculation();
 		DrawElementsWithCounters( &unitSquareSurface );
@@ -5892,11 +5593,9 @@ void idRenderBackend::PostProcess( const void* data )
 		//GL_SelectTexture( 0 );
 		//globalImages->smaaBlendImage->CopyFramebuffer( viewport.x1, viewport.y1, viewport.GetWidth(), viewport.GetHeight() );
 		
-		GL_SelectTexture( 0 );
-		globalImages->smaaInputImage->Bind();
+		GL_BindTexture( 0, globalImages->smaaInputImage);
 		
-		GL_SelectTexture( 1 );
-		globalImages->smaaBlendImage->Bind();
+		GL_BindTexture( 1, globalImages->smaaBlendImage);
 		
 		renderProgManager.BindShader_SMAA_NeighborhoodBlending();
 		DrawElementsWithCounters( &unitSquareSurface );
@@ -5908,11 +5607,9 @@ void idRenderBackend::PostProcess( const void* data )
 	{
 		globalImages->currentRenderImage->CopyFramebuffer( viewport.x1, viewport.y1, viewport.GetWidth(), viewport.GetHeight() );
 		
-		GL_SelectTexture( 0 );
-		globalImages->currentRenderImage->Bind();
+		GL_BindTexture( 0, globalImages->currentRenderImage);
 		
-		GL_SelectTexture( 1 );
-		globalImages->grainImage1->Bind();
+		GL_BindTexture( 1, globalImages->grainImage1);
 		
 		renderProgManager.BindShader_PostProcess();
 		
@@ -5924,7 +5621,7 @@ void idRenderBackend::PostProcess( const void* data )
 		screenCorrectionParm[1] = 1.0f / GRAIN_SIZE;
 		screenCorrectionParm[2] = 1.0f;
 		screenCorrectionParm[3] = 1.0f;
-		SetFragmentParm( RENDERPARM_SCREENCORRECTIONFACTOR, screenCorrectionParm ); // rpScreenCorrectionFactor
+		renderProgManager.SetRenderParm( RENDERPARM_SCREENCORRECTIONFACTOR, screenCorrectionParm ); // rpScreenCorrectionFactor
 		
 		float jitterTexOffset[4];
 		if( r_shadowMapRandomizeJitter.GetBool() )
@@ -5939,15 +5636,16 @@ void idRenderBackend::PostProcess( const void* data )
 		}
 		jitterTexOffset[2] = 0.0f;
 		jitterTexOffset[3] = 0.0f;
-		SetFragmentParm( RENDERPARM_JITTERTEXOFFSET, jitterTexOffset ); // rpJitterTexOffset
+		renderProgManager.SetRenderParm( RENDERPARM_JITTERTEXOFFSET, jitterTexOffset ); // rpJitterTexOffset
 		
 		// Draw
 		DrawElementsWithCounters( &unitSquareSurface );
 	}
 #endif
 	
-	GL_SelectTexture( 0 );
+	//GL_SelectTexture( 0 );
 	renderProgManager.Unbind();
 	
 	renderLog.CloseBlock();
+#endif
 }

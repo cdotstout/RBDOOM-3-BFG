@@ -459,7 +459,11 @@ void R_SetupProjectionMatrix( viewDef_t* viewDef )
 	viewDef->projectionMatrix[3 * 4 + 0] = 0.0f;
 	
 	viewDef->projectionMatrix[0 * 4 + 1] = 0.0f;
+#if defined( ID_VULKAN )
+	viewDef->projectionMatrix[1 * 4 + 1] = -2.0f * zNear / height;
+#else
 	viewDef->projectionMatrix[1 * 4 + 1] = 2.0f * zNear / height;
+#endif
 	viewDef->projectionMatrix[2 * 4 + 1] = ( ymax + ymin ) / height;	// normally 0
 	viewDef->projectionMatrix[3 * 4 + 1] = 0.0f;
 	
@@ -469,7 +473,7 @@ void R_SetupProjectionMatrix( viewDef_t* viewDef )
 	viewDef->projectionMatrix[0 * 4 + 2] = 0.0f;
 	viewDef->projectionMatrix[1 * 4 + 2] = 0.0f;
 	viewDef->projectionMatrix[2 * 4 + 2] = -0.999f; // adjust value to prevent imprecision issues
-	viewDef->projectionMatrix[3 * 4 + 2] = -2.0f * zNear;
+	viewDef->projectionMatrix[3 * 4 + 2] = -1.0f * zNear;
 	
 	viewDef->projectionMatrix[0 * 4 + 3] = 0.0f;
 	viewDef->projectionMatrix[1 * 4 + 3] = 0.0f;
@@ -478,6 +482,7 @@ void R_SetupProjectionMatrix( viewDef_t* viewDef )
 	
 	if( viewDef->renderView.flipProjection )
 	{
+		assert(false);
 		viewDef->projectionMatrix[1 * 4 + 1] = -viewDef->projectionMatrix[1 * 4 + 1];
 		viewDef->projectionMatrix[1 * 4 + 3] = -viewDef->projectionMatrix[1 * 4 + 3];
 	}
@@ -521,14 +526,18 @@ void R_SetupProjectionMatrix2( const viewDef_t* viewDef, const float zNear, cons
 	projectionMatrix[3 * 4 + 0] = 0.0f;
 	
 	projectionMatrix[0 * 4 + 1] = 0.0f;
+#if defined( ID_VULKAN )
+	projectionMatrix[1 * 4 + 1] = -2.0f * zNear / height;
+#else
 	projectionMatrix[1 * 4 + 1] = 2.0f * zNear / height;
+#endif
 	projectionMatrix[2 * 4 + 1] = ( ymax + ymin ) / height;	// normally 0
 	projectionMatrix[3 * 4 + 1] = 0.0f;
 	
 	projectionMatrix[0 * 4 + 2] = 0.0f;
 	projectionMatrix[1 * 4 + 2] = 0.0f;
 	projectionMatrix[2 * 4 + 2] =  -( zFar + zNear ) / depth;		// -0.999f; // adjust value to prevent imprecision issues
-	projectionMatrix[3 * 4 + 2] = -2 * zFar * zNear / depth;	// -2.0f * zNear;
+	projectionMatrix[3 * 4 + 2] = -1 * zFar * zNear / depth;	// -2.0f * zNear;
 	
 	projectionMatrix[0 * 4 + 3] = 0.0f;
 	projectionMatrix[1 * 4 + 3] = 0.0f;
@@ -537,6 +546,7 @@ void R_SetupProjectionMatrix2( const viewDef_t* viewDef, const float zNear, cons
 	
 	if( viewDef->renderView.flipProjection )
 	{
+		assert(false);
 		projectionMatrix[1 * 4 + 1] = -viewDef->projectionMatrix[1 * 4 + 1];
 		projectionMatrix[1 * 4 + 3] = -viewDef->projectionMatrix[1 * 4 + 3];
 	}

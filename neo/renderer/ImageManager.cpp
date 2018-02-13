@@ -527,6 +527,7 @@ idImage* idImageManager::ScratchImage( const char* _name, idImageOpts* imgOpts, 
 	if( newImage != NULL )
 	{
 		newImage->AllocImage( *imgOpts, filter, repeat );
+		newImage->referencedOutsideLevelLoad = true;
 	}
 	return newImage;
 }
@@ -737,12 +738,12 @@ void idImageManager::BeginLevelLoad()
 		
 		if( !image->referencedOutsideLevelLoad && image->IsLoaded() )
 		{
+			idLib::Printf( "purging %s\n", image->GetName() );
 			image->PurgeImage();
-			//idLib::Printf( "purging %s\n", image->GetName() );
 		}
 		else
 		{
-			//idLib::Printf( "not purging %s\n", image->GetName() );
+			idLib::Printf( "not purging %s\n", image->GetName() );
 		}
 		
 		image->levelLoadReferenced = false;

@@ -84,10 +84,16 @@ const int MAX_EXPRESSION_OPS = 4096;
 const int MAX_EXPRESSION_REGISTERS = 4096;
 
 // renderer
+#include "../renderer/RenderConfig.h"
 
+#if defined(ID_VULKAN)
+#include "../renderer/Vulkan/qvk.h"
+#else
 // RB: replaced QGL with GLEW
 #include <GL/glew.h>
 // RB end
+#endif
+
 #include "../renderer/Cinematic.h"
 #include "../renderer/Material.h"
 #include "../renderer/BufferObject.h"
@@ -169,5 +175,6 @@ const int MAX_EXPRESSION_REGISTERS = 4096;
 #undef min
 #undef max
 #include <algorithm>	// for min / max / swap
+#include <memory>
 
 #endif /* !__PRECOMPILED_H__ */

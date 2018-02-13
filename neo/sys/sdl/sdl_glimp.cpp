@@ -40,7 +40,7 @@ If you have questions concerning this license or the applicable additional terms
 
 #include <SDL.h>
 
-#include "renderer/tr_local.h"
+#include "renderer/RenderCommon.h"
 #include "sdl_local.h"
 
 idCVar in_nograb( "in_nograb", "0", CVAR_SYSTEM | CVAR_NOCHEAT, "prevents input grabbing" );
@@ -90,6 +90,12 @@ void GLimp_PreInit() // DG: added this function for SDL compatibility
 	}
 }
 
+#if SDL_VERSION_ATLEAST(2, 0, 0)
+SDL_Window* GLimp_GetWindow()
+{
+	return window;
+}
+#endif
 
 /*
 ===================
@@ -103,7 +109,12 @@ bool GLimp_Init( glimpParms_t parms )
 	GLimp_PreInit(); // DG: make sure SDL is initialized
 	
 	// DG: make window resizable
-	Uint32 flags = SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE;
+	Uint32 flags = SDL_WINDOW_RESIZABLE;
+#if defined(ID_VULKAN)
+	flags |= SDL_WINDOW_VULKAN;
+#else
+	flags |= SDL_WINDOW_OPENGL;
+#endif
 	// DG end
 	
 	if( parms.fullScreen )
@@ -195,6 +206,7 @@ bool GLimp_Init( glimpParms_t parms )
 		
 #if SDL_VERSION_ATLEAST(2, 0, 0)
 		
+#if !defined(ID_VULKAN)
 		// RB begin
 		if( r_useOpenGL32.GetInteger() > 0 )
 		{
@@ -216,7 +228,7 @@ bool GLimp_Init( glimpParms_t parms )
 			SDL_GL_SetAttribute( SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE );
 		}
 		// RB end
-		
+#endif		
 		// DG: set display num for fullscreen
 		int windowPos = SDL_WINDOWPOS_UNDEFINED;
 		if( parms.fullScreen > 0 )
@@ -245,24 +257,29 @@ bool GLimp_Init( glimpParms_t parms )
 								   windowPos,
 								   parms.width, parms.height, flags );
 		// DG end
-		
+	
+#if !defined(ID_VULKAN)	
 		context = SDL_GL_CreateContext( window );
-		
+#endif
+
 		if( !window )
 		{
 			common->DPrintf( "Couldn't set GL mode %d/%d/%d: %s",
 							 channelcolorbits, tdepthbits, tstencilbits, SDL_GetError() );
 			continue;
 		}
-		
+
+#if !defined(ID_VULKAN)		
 		if( SDL_GL_SetSwapInterval( r_swapInterval.GetInteger() ) < 0 )
 			common->Warning( "SDL_GL_SWAP_CONTROL not supported" );
-			
+#endif
+
 		// RB begin
-		SDL_GetWindowSize( window, &glConfig.nativeScreenWidth, &glConfig.nativeScreenHeight );
+		int nativeScreenWidth, nativeScreenHeight;
+		SDL_GetWindowSize( window, &nativeScreenWidth, &nativeScreenHeight );
 		// RB end
 		
-		glConfig.isFullscreen = ( SDL_GetWindowFlags( window ) & SDL_WINDOW_FULLSCREEN ) == SDL_WINDOW_FULLSCREEN;
+		//glConfig.isFullscreen = ( SDL_GetWindowFlags( window ) & SDL_WINDOW_FULLSCREEN ) == SDL_WINDOW_FULLSCREEN;
 #else
 		glConfig.driverType = GLDRV_OPENGL3X;
 		
@@ -279,25 +296,25 @@ bool GLimp_Init( glimpParms_t parms )
 			continue;
 		}
 		
-		glConfig.nativeScreenWidth = window->w;
-		glConfig.nativeScreenHeight = window->h;
+		nativeScreenWidth = window->w;
+		nativeScreenHeight = window->h;
 		
-		glConfig.isFullscreen = ( window->flags & SDL_FULLSCREEN ) == SDL_FULLSCREEN;
+		isFullscreen = ( window->flags & SDL_FULLSCREEN ) == SDL_FULLSCREEN;
 #endif
 		
 		common->Printf( "Using %d color bits, %d depth, %d stencil display\n",
 						channelcolorbits, tdepthbits, tstencilbits );
 						
-		glConfig.colorBits = tcolorbits;
-		glConfig.depthBits = tdepthbits;
-		glConfig.stencilBits = tstencilbits;
+		//glConfig.colorBits = tcolorbits;
+		//glConfig.depthBits = tdepthbits;
+		//glConfig.stencilBits = tstencilbits;
 		
 		// RB begin
-		glConfig.displayFrequency = 60;
-		glConfig.isStereoPixelFormat = parms.stereo;
-		glConfig.multisamples = parms.multiSamples;
+		//glConfig.displayFrequency = 60;
+		//glConfig.isStereoPixelFormat = parms.stereo;
+		//glConfig.multisamples = parms.multiSamples;
 		
-		glConfig.pixelAspect = 1.0f;	// FIXME: some monitor modes may be distorted
+		//glConfig.pixelAspect = 1.0f;	// FIXME: some monitor modes may be distorted
 		// should side-by-side stereo modes be consider aspect 0.5?
 		
 		// RB end
@@ -315,6 +332,7 @@ bool GLimp_Init( glimpParms_t parms )
 	glewExperimental = GL_TRUE;
 #endif
 	
+#if !defined(ID_VULKAN)
 	GLenum glewResult = glewInit();
 	if( GLEW_OK != glewResult )
 	{
@@ -325,6 +343,7 @@ bool GLimp_Init( glimpParms_t parms )
 	{
 		common->Printf( "Using GLEW %s\n", glewGetString( GLEW_VERSION ) );
 	}
+#endif
 	
 	// DG: disable cursor, we have two cursors in menu (because mouse isn't grabbed in menu)
 	SDL_ShowCursor( SDL_DISABLE );
@@ -362,20 +381,20 @@ static int ScreenParmsHandleDisplayIndex( glimpParms_t parms )
 		return -1;
 	}
 	
-	if( parms.fullScreen != glConfig.isFullscreen )
-	{
-		// we have to switch to another display
-		if( glConfig.isFullscreen )
-		{
-			// if we're already in fullscreen mode but want to switch to another monitor
-			// we have to go to windowed mode first to move the window.. SDL-oddity.
-			SDL_SetWindowFullscreen( window, SDL_FALSE );
-		}
-		// select display ; SDL_WINDOWPOS_UNDEFINED_DISPLAY() doesn't work.
-		int x = SDL_WINDOWPOS_CENTERED_DISPLAY( displayIdx );
-		// move window to the center of selected display
-		SDL_SetWindowPosition( window, x, x );
-	}
+	// if( parms.fullScreen != glConfig.isFullscreen )
+	// {
+	// 	// we have to switch to another display
+	// 	if( glConfig.isFullscreen )
+	// 	{
+	// 		// if we're already in fullscreen mode but want to switch to another monitor
+	// 		// we have to go to windowed mode first to move the window.. SDL-oddity.
+	// 		SDL_SetWindowFullscreen( window, SDL_FALSE );
+	// 	}
+	// 	// select display ; SDL_WINDOWPOS_UNDEFINED_DISPLAY() doesn't work.
+	// 	int x = SDL_WINDOWPOS_CENTERED_DISPLAY( displayIdx );
+	// 	// move window to the center of selected display
+	// 	SDL_SetWindowPosition( window, x, x );
+	// }
 	return displayIdx;
 }
 
@@ -489,12 +508,12 @@ bool GLimp_SetScreenParms( glimpParms_t parms )
 	SDL_GL_SetAttribute( SDL_GL_MULTISAMPLEBUFFERS, parms.multiSamples ? 1 : 0 );
 	SDL_GL_SetAttribute( SDL_GL_MULTISAMPLESAMPLES, parms.multiSamples );
 	
-	glConfig.isFullscreen = parms.fullScreen;
-	glConfig.isStereoPixelFormat = parms.stereo;
-	glConfig.nativeScreenWidth = parms.width;
-	glConfig.nativeScreenHeight = parms.height;
-	glConfig.displayFrequency = parms.displayHz;
-	glConfig.multisamples = parms.multiSamples;
+	// glConfig.isFullscreen = parms.fullScreen;
+	// glConfig.isStereoPixelFormat = parms.stereo;
+	// glConfig.nativeScreenWidth = parms.width;
+	// glConfig.nativeScreenHeight = parms.height;
+	// glConfig.displayFrequency = parms.displayHz;
+	// glConfig.multisamples = parms.multiSamples;
 	
 	return true;
 }

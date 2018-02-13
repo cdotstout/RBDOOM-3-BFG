@@ -669,23 +669,6 @@ void idImage::Reload( bool force )
 }
 
 /*
-========================
-idImage::SetSamplerState
-========================
-*/
-void idImage::SetSamplerState( textureFilter_t tf, textureRepeat_t tr )
-{
-	if( tf == filter && tr == repeat )
-	{
-		return;
-	}
-	filter = tf;
-	repeat = tr;
-	glBindTexture( ( opts.textureType == TT_CUBIC ) ? GL_TEXTURE_CUBE_MAP : GL_TEXTURE_2D, texnum );
-	SetTexParameters();
-}
-
-/*
 ================
 GenerateImage
 ================
@@ -703,7 +686,7 @@ void idImage::GenerateImage( const byte* pic, int width, int height, textureFilt
 	opts.width = width;
 	opts.height = height;
 	opts.numLevels = 0;
-	opts.samples = textureSamples_t( msaaSamples );
+	opts.samples = msaaSamples == 0 ? SAMPLE_1 : textureSamples_t( msaaSamples );
 	DeriveOpts();
 	
 	// if we don't have a rendering context, just return after we

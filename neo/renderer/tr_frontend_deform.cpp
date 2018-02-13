@@ -85,10 +85,14 @@ static drawSurf_t* R_AutospriteDeform( drawSurf_t* surf )
 		return NULL;
 	}
 	
+#if defined(ID_VULKAN)
+	const idJointMat* joints = NULL;
+#else
 	// RB: added check wether GPU skinning is available at all
 	const idJointMat* joints = ( srcTri->staticModelWithJoints != NULL && r_useGPUSkinning.GetBool() && glConfig.gpuSkinningAvailable ) ? srcTri->staticModelWithJoints->jointsInverted : NULL;
 	// RB end
-	
+#endif
+
 	idVec3 leftDir;
 	idVec3 upDir;
 	R_GlobalVectorToLocal( surf->space->modelMatrix, tr.viewDef->renderView.viewaxis[1], leftDir );
@@ -181,11 +185,14 @@ static drawSurf_t* R_TubeDeform( drawSurf_t* surf )
 	{
 		common->Error( "R_TubeDeform: autosprite had odd index count" );
 	}
-	
+
+#if defined(ID_VULKAN)
+	const idJointMat* joints = NULL;
+#else	
 	// RB: added check wether GPU skinning is available at all
 	const idJointMat* joints = ( srcTri->staticModelWithJoints != NULL && r_useGPUSkinning.GetBool() && glConfig.gpuSkinningAvailable ) ? srcTri->staticModelWithJoints->jointsInverted : NULL;
 	// RB end
-	
+#endif
 	// we need the view direction to project the minor axis of the tube
 	// as the view changes
 	idVec3	localView;
@@ -653,11 +660,14 @@ static void AddTriangleToIsland_r( const srfTriangles_t* tri, int triangleNum, b
 	}
 	island->tris[island->numTris] = triangleNum;
 	island->numTris++;
-	
+
+#if defined(ID_VULKAN)
+	const idJointMat* joints = NULL;
+#else	
 	// RB: added check wether GPU skinning is available at all
 	const idJointMat* joints = ( tri->staticModelWithJoints != NULL && r_useGPUSkinning.GetBool() && glConfig.gpuSkinningAvailable ) ? tri->staticModelWithJoints->jointsInverted : NULL;
 	// RB end
-	
+#endif
 	// recurse into all neighbors
 	const int a = tri->indexes[triangleNum * 3 + 0];
 	const int b = tri->indexes[triangleNum * 3 + 1];
@@ -743,11 +753,14 @@ static drawSurf_t* R_EyeballDeform( drawSurf_t* surf )
 		common->Printf( "R_EyeballDeform: %i triangle islands\n", numIslands );
 		return NULL;
 	}
-	
+
+#if defined(ID_VULKAN)
+	const idJointMat* joints = NULL;
+#else	
 	// RB: added check wether GPU skinning is available at all
 	const idJointMat* joints = ( srcTri->staticModelWithJoints != NULL && r_useGPUSkinning.GetBool() && glConfig.gpuSkinningAvailable ) ? srcTri->staticModelWithJoints->jointsInverted : NULL;
 	// RB end
-	
+#endif
 	// the srfTriangles_t are in frame memory and will be automatically disposed of
 	srfTriangles_t* newTri = ( srfTriangles_t* )R_ClearedFrameAlloc( sizeof( *newTri ), FRAME_ALLOC_SURFACE_TRIANGLES );
 	newTri->numVerts = srcTri->numVerts;
@@ -876,10 +889,14 @@ static drawSurf_t* R_ParticleDeform( drawSurf_t* surf, bool useArea )
 	int numSourceTris = surf->frontEndGeo->numIndexes / 3;
 	float totalArea = 0.0f;
 	float* sourceTriAreas = NULL;
-	
+
+#if defined(ID_VULKAN)
+	const idJointMat* joints = NULL;
+#else	
 	// RB: added check wether GPU skinning is available at all
 	const idJointMat* joints = ( ( srcTri->staticModelWithJoints != NULL ) && r_useGPUSkinning.GetBool() && glConfig.gpuSkinningAvailable ) ? srcTri->staticModelWithJoints->jointsInverted : NULL;
 	// RB end
+#endif
 	
 	if( useArea )
 	{

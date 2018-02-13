@@ -121,8 +121,12 @@ bool R_PreciseCullSurface( const drawSurf_t* drawSurf, idBounds& ndcBounds )
 	ndcBounds.Clear();
 	
 	// RB: added check wether GPU skinning is available at all
+#if defined(ID_VULKAN)
+	const idJointMat* joints = NULL;
+#else
 	const idJointMat* joints = ( tri->staticModelWithJoints != NULL && r_useGPUSkinning.GetBool() && glConfig.gpuSkinningAvailable ) ? tri->staticModelWithJoints->jointsInverted : NULL;
 	// RB end
+#endif
 	
 	for( int i = 0; i < tri->numVerts; i++ )
 	{

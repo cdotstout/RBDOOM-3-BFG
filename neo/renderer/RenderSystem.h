@@ -39,6 +39,24 @@ If you have questions concerning this license or the applicable additional terms
 
 ===============================================================================
 */
+
+enum frameAllocType_t
+{
+	FRAME_ALLOC_VIEW_DEF,
+	FRAME_ALLOC_VIEW_ENTITY,
+	FRAME_ALLOC_VIEW_LIGHT,
+	FRAME_ALLOC_SURFACE_TRIANGLES,
+	FRAME_ALLOC_DRAW_SURFACE,
+	FRAME_ALLOC_INTERACTION_STATE,
+	FRAME_ALLOC_SHADOW_ONLY_ENTITY,
+	FRAME_ALLOC_SHADOW_VOLUME_PARMS,
+	FRAME_ALLOC_SHADER_REGISTER,
+	FRAME_ALLOC_DRAW_SURFACE_POINTER,
+	FRAME_ALLOC_DRAW_COMMAND,
+	FRAME_ALLOC_UNKNOWN,
+	FRAME_ALLOC_MAX
+};
+
 enum stereo3DMode_t
 {
 	STEREO3D_OFF,
@@ -191,7 +209,7 @@ struct glconfig_t
 	
 	// RB begin
 #if !defined(__ANDROID__)
-	GLuint				global_vao;
+	uint32_t			global_vao;
 #endif
 	// RB end
 };
@@ -201,6 +219,7 @@ struct glconfig_t
 struct emptyCommand_t;
 
 bool R_IsInitialized();
+void R_SetNewMode( const bool fullInit );
 
 const int SMALLCHAR_WIDTH		= 8;
 const int SMALLCHAR_HEIGHT		= 16;
@@ -233,9 +252,9 @@ public:
 	virtual void			ResetGuiModels() = 0;
 	
 	virtual void			InitOpenGL() = 0;
-	
 	virtual void			ShutdownOpenGL() = 0;
-	
+	virtual void			VidRestart() = 0;
+
 	virtual bool			IsOpenGLRunning() const = 0;
 	
 	virtual bool			IsFullScreen() const = 0;
@@ -264,6 +283,9 @@ public:
 	virtual idRenderWorld* 	AllocRenderWorld() = 0;
 	virtual	void			FreeRenderWorld( idRenderWorld* rw ) = 0;
 	
+	// virtual void *			FrameAlloc( int bytes, frameAllocType_t type = FRAME_ALLOC_UNKNOWN ) = 0;
+	// virtual void *			ClearedFrameAlloc( int bytes, frameAllocType_t type = FRAME_ALLOC_UNKNOWN ) = 0;
+
 	// All data that will be used in a level should be
 	// registered before rendering any frames to prevent disk hits,
 	// but they can still be registered at a later time
@@ -335,7 +357,7 @@ public:
 	// issues GPU commands to render a built up list of command buffers returned
 	// by SwapCommandBuffers().  No references should be made to the current frameData,
 	// so new scenes and GUIs can be built up in parallel with the rendering.
-	virtual void			RenderCommandBuffers( const emptyCommand_t* commandBuffers ) = 0;
+	virtual void			RenderCommandBuffers( const emptyCommand_t* const commandBuffers ) = 0;
 	
 	// aviDemo uses this.
 	// Will automatically tile render large screen shots if necessary

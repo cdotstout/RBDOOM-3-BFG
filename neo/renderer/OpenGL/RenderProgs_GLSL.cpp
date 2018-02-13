@@ -33,6 +33,13 @@ If you have questions concerning this license or the applicable additional terms
 #include "RenderCommon.h"
 #include "RenderProgs_embedded.h"
 
+
+struct glslUniformLocation_t
+{
+	int		parmIndex;
+	int  	uniformIndex;
+};
+
 idCVar r_skipStripDeadCode( "r_skipStripDeadCode", "0", CVAR_BOOL, "Skip stripping dead code" );
 idCVar r_useUniformArrays( "r_useUniformArrays", "1", CVAR_BOOL, "" );
 
@@ -244,119 +251,6 @@ const char* prefixes[] =
 	"sampler2DMS",			// GLSL
 };
 static const int numPrefixes = sizeof( prefixes ) / sizeof( prefixes[0] );
-
-// For GLSL we need to have the names for the renderparms so we can look up their run time indices within the renderprograms
-static const char* GLSLParmNames[RENDERPARM_TOTAL] =
-{
-	"rpScreenCorrectionFactor",
-	"rpWindowCoord",
-	"rpDiffuseModifier",
-	"rpSpecularModifier",
-	
-	"rpLocalLightOrigin",
-	"rpLocalViewOrigin",
-	
-	"rpLightProjectionS",
-	"rpLightProjectionT",
-	"rpLightProjectionQ",
-	"rpLightFalloffS",
-	
-	"rpBumpMatrixS",
-	"rpBumpMatrixT",
-	
-	"rpDiffuseMatrixS",
-	"rpDiffuseMatrixT",
-	
-	"rpSpecularMatrixS",
-	"rpSpecularMatrixT",
-	
-	"rpVertexColorModulate",
-	"rpVertexColorAdd",
-	
-	"rpColor",
-	"rpViewOrigin",
-	"rpGlobalEyePos",
-	
-	"rpMVPmatrixX",
-	"rpMVPmatrixY",
-	"rpMVPmatrixZ",
-	"rpMVPmatrixW",
-	
-	"rpModelMatrixX",
-	"rpModelMatrixY",
-	"rpModelMatrixZ",
-	"rpModelMatrixW",
-	
-	"rpProjectionMatrixX",
-	"rpProjectionMatrixY",
-	"rpProjectionMatrixZ",
-	"rpProjectionMatrixW",
-	
-	"rpModelViewMatrixX",
-	"rpModelViewMatrixY",
-	"rpModelViewMatrixZ",
-	"rpModelViewMatrixW",
-	
-	"rpTextureMatrixS",
-	"rpTextureMatrixT",
-	
-	"rpTexGen0S",
-	"rpTexGen0T",
-	"rpTexGen0Q",
-	"rpTexGen0Enabled",
-	
-	"rpTexGen1S",
-	"rpTexGen1T",
-	"rpTexGen1Q",
-	"rpTexGen1Enabled",
-	
-	"rpWobbleSkyX",
-	"rpWobbleSkyY",
-	"rpWobbleSkyZ",
-	
-	"rpOverbright",
-	"rpEnableSkinning",
-	"rpAlphaTest",
-	
-	// RB begin
-	"rpAmbientColor",
-	
-	"rpGlobalLightOrigin",
-	"rpJitterTexScale",
-	"rpJitterTexOffset",
-	"rpCascadeDistances",
-	
-	"rpShadowMatrices",
-	"rpShadowMatrix0Y",
-	"rpShadowMatrix0Z",
-	"rpShadowMatrix0W",
-	
-	"rpShadowMatrix1X",
-	"rpShadowMatrix1Y",
-	"rpShadowMatrix1Z",
-	"rpShadowMatrix1W",
-	
-	"rpShadowMatrix2X",
-	"rpShadowMatrix2Y",
-	"rpShadowMatrix2Z",
-	"rpShadowMatrix2W",
-	
-	"rpShadowMatrix3X",
-	"rpShadowMatrix3Y",
-	"rpShadowMatrix3Z",
-	"rpShadowMatrix3W",
-	
-	"rpShadowMatrix4X",
-	"rpShadowMatrix4Y",
-	"rpShadowMatrix4Z",
-	"rpShadowMatrix4W",
-	
-	"rpShadowMatrix5X",
-	"rpShadowMatrix5Y",
-	"rpShadowMatrix5Z",
-	"rpShadowMatrix5W",
-	// RB end
-};
 
 // RB begin
 const char* idRenderProgManager::GLSLMacroNames[MAX_SHADER_MACRO_NAMES] =

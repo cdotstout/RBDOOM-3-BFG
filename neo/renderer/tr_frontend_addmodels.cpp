@@ -335,7 +335,11 @@ R_SetupDrawSurfJoints
 void R_SetupDrawSurfJoints( drawSurf_t* drawSurf, const srfTriangles_t* tri, const idMaterial* shader )
 {
 	// RB: added check wether GPU skinning is available at all
-	if( tri->staticModelWithJoints == NULL || !r_useGPUSkinning.GetBool() || !glConfig.gpuSkinningAvailable )
+#if defined(ID_VULKAN)
+	if (true)
+#else
+	if( tri->staticModelWithJoints == NULL || !r_useGPUSkinning.GetBool() || !skinning_available)
+#endif
 	{
 		drawSurf->jointCache = 0;
 		return;
@@ -347,7 +351,11 @@ void R_SetupDrawSurfJoints( drawSurf_t* drawSurf, const srfTriangles_t* tri, con
 	
 	if( !vertexCache.CacheIsCurrent( model->jointsInvertedBuffer ) )
 	{
+#if defined(ID_VULKAN)
+		const int alignment = vkcontext.gpu.props.limits.minUniformBufferOffsetAlignment;
+#else
 		const int alignment = glConfig.uniformBufferOffsetAlignment;
+#endif
 		model->jointsInvertedBuffer = vertexCache.AllocJoint( model->jointsInverted, ALIGN( model->numInvertedJoints * sizeof( idJointMat ), alignment ) );
 	}
 	drawSurf->jointCache = model->jointsInvertedBuffer;
@@ -706,9 +714,12 @@ void R_AddSingleModel( viewEntity_t* vEntity )
 		const bool surfaceDirectlyVisible = modelIsVisible && !idRenderMatrix::CullBoundsToMVP( vEntity->mvp, tri->bounds );
 		
 		// RB: added check wether GPU skinning is available at all
+#if defined(ID_VULKAN)
+		const bool gpuSkinned = false;
+#else		
 		const bool gpuSkinned = ( tri->staticModelWithJoints != NULL && r_useGPUSkinning.GetBool() && glConfig.gpuSkinningAvailable );
 		// RB end
-		
+#endif	
 		//--------------------------
 		// base drawing surface
 		//--------------------------

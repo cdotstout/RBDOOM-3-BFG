@@ -92,7 +92,7 @@ static const int	MAX_PIX_EVENTS = 256;
 pixEvent_t* 		pixEvents;	// [MAX_PIX_EVENTS]
 int					numPixEvents;
 int					numPixLevels;
-static GLuint		timeQueryIds[MAX_PIX_EVENTS];
+//static GLuint		timeQueryIds[MAX_PIX_EVENTS];
 
 /*
 ========================
@@ -412,12 +412,12 @@ idRenderLog::Printf
 */
 void idRenderLog::Printf( const char* fmt, ... )
 {
-#if !defined(USE_GLES2) && !defined(USE_GLES3)
 	if( activeLevel <= LOG_LEVEL_BLOCKS_ONLY )
 	{
 		return;
 	}
 	
+#if !defined(USE_GLES2) && !defined(USE_GLES3) && !defined(ID_VULKAN)	
 	//if( logFile == NULL )
 	if( r_logFile.GetInteger() == 0 || !glConfig.gremedyStringMarkerAvailable )
 	{
@@ -446,7 +446,38 @@ void idRenderLog::Printf( const char* fmt, ... )
 	
 	
 //	logFile->Flush();		this makes it take waaaay too long
+#else	
+	// if ( logFile == NULL ) {
+	// 	return;
+	// }
+
+	// va_list marker;
+	// logFile->Printf( "%s", indentString );
+	// va_start( marker, fmt );
+	// logFile->VPrintf( fmt, marker );
+	// va_end( marker );
+//	logFile->Flush();		this makes it take waaaay too long
 #endif
+}
+
+/*
+========================
+idRenderLog::Printf_NoIndent
+========================
+*/
+void idRenderLog::Printf_NoIndent( const char * fmt, ... ) {
+	// if ( activeLevel <= LOG_LEVEL_BLOCKS_ONLY ) {
+	// 	return;
+	// }
+
+	// if ( logFile == NULL ) {
+	// 	return;
+	// }
+
+	// va_list marker;
+	// va_start( marker, fmt );
+	// logFile->VPrintf( fmt, marker );
+	// va_end( marker );
 }
 
 /*
@@ -466,7 +497,7 @@ void idRenderLog::LogOpenBlock( renderLogIndentLabel_t label, const char* fmt, .
 		//logFile->Printf( "%s%1.1f msec gap from last closeblock\n", indentString, ( now - closeBlockTime ) * ( 1.0f / 1000.0f ) );
 		//}
 		
-#if !defined(USE_GLES2) && !defined(USE_GLES3)
+#if !defined(USE_GLES2) && !defined(USE_GLES3) && !defined(ID_VULKAN)
 		if( glConfig.gremedyStringMarkerAvailable )
 		{
 			//Printf( fmt, args );
