@@ -3,6 +3,7 @@
 
 Doom 3 BFG Edition GPL Source Code
 Copyright (C) 1993-2012 id Software LLC, a ZeniMax Media company.
+Copyright (C) 2016-2017 Dustin Land
 
 This file is part of the Doom 3 BFG Edition GPL Source Code ("Doom 3 BFG Edition Source Code").
 
@@ -64,7 +65,7 @@ struct geoBufferSet_t
 {
 	idIndexBuffer			indexBuffer;
 	idVertexBuffer			vertexBuffer;
-	idJointBuffer			jointBuffer;
+	idUniformBuffer			jointBuffer;
 	byte* 					mappedVertexBase;
 	byte* 					mappedIndexBase;
 	byte* 					mappedJointBase;
@@ -77,7 +78,7 @@ struct geoBufferSet_t
 class idVertexCache
 {
 public:
-	void			Init( bool restart = false );
+	void			Init( int uniformBufferOffsetAlignment );
 	void			Shutdown();
 	void			PurgeAll();
 	
@@ -87,15 +88,15 @@ public:
 	// this data is only valid for one frame of rendering
 	vertCacheHandle_t	AllocVertex( const void* data, int bytes )
 	{
-		return ActuallyAlloc( frameData[listNum], data, bytes, CACHE_VERTEX );
+		return ActuallyAlloc( frameData[listNum], data, ALIGN( bytes, VERTEX_CACHE_ALIGN ), CACHE_VERTEX );
 	}
 	vertCacheHandle_t	AllocIndex( const void* data, int bytes )
 	{
-		return ActuallyAlloc( frameData[listNum], data, bytes, CACHE_INDEX );
+		return ActuallyAlloc( frameData[listNum], data, ALIGN( bytes, INDEX_CACHE_ALIGN ), CACHE_INDEX );
 	}
 	vertCacheHandle_t	AllocJoint( const void* data, int bytes )
 	{
-		return ActuallyAlloc( frameData[listNum], data, bytes, CACHE_JOINT );
+		return ActuallyAlloc( frameData[listNum], data, ALIGN( bytes, uniformBufferOffsetAlignment ), CACHE_JOINT );
 	}
 	
 	// this data is valid until the next map load
@@ -160,7 +161,7 @@ public:
 	// vb/ib is a temporary reference -- don't store it
 	bool			GetVertexBuffer( vertCacheHandle_t handle, idVertexBuffer* vb );
 	bool			GetIndexBuffer( vertCacheHandle_t handle, idIndexBuffer* ib );
-	bool			GetJointBuffer( vertCacheHandle_t handle, idJointBuffer* jb );
+	bool			GetJointBuffer( vertCacheHandle_t handle, idUniformBuffer* jb );
 	
 	void			BeginBackEnd();
 	
@@ -171,6 +172,8 @@ public:
 	
 	geoBufferSet_t	staticData;
 	geoBufferSet_t	frameData[VERTCACHE_NUM_FRAMES];
+
+	int				uniformBufferOffsetAlignment;
 	
 	// High water marks for the per-frame buffers
 	int				mostUsedVertex;

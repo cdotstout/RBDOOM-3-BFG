@@ -4,6 +4,7 @@
 Doom 3 BFG Edition GPL Source Code
 Copyright (C) 1993-2012 id Software LLC, a ZeniMax Media company.
 Copyright (C) 2013-2014 Robert Beckebans
+Copyright (C) 2016-2017 Dustin Land
 
 This file is part of the Doom 3 BFG Edition GPL Source Code ("Doom 3 BFG Edition Source Code").
 
@@ -101,13 +102,13 @@ static void UnmapGeoBufferSet( geoBufferSet_t& gbs )
 AllocGeoBufferSet
 ==============
 */
-static void AllocGeoBufferSet( geoBufferSet_t& gbs, const int vertexBytes, const int indexBytes, const int jointBytes )
+static void AllocGeoBufferSet( geoBufferSet_t& gbs, const int vertexBytes, const int indexBytes, const int jointBytes, bufferUsageType_t usage)
 {
-	gbs.vertexBuffer.AllocBufferObject( NULL, vertexBytes );
-	gbs.indexBuffer.AllocBufferObject( NULL, indexBytes );
+	gbs.vertexBuffer.AllocBufferObject( NULL, vertexBytes, usage );
+	gbs.indexBuffer.AllocBufferObject( NULL, indexBytes, usage );
 	if( jointBytes != 0 )
 	{
-		gbs.jointBuffer.AllocBufferObject( NULL, jointBytes / sizeof( idJointMat ) );
+		gbs.jointBuffer.AllocBufferObject( NULL, jointBytes / sizeof( idJointMat ), usage);
 	}
 	ClearGeoBufferSet( gbs );
 }
@@ -117,10 +118,12 @@ static void AllocGeoBufferSet( geoBufferSet_t& gbs, const int vertexBytes, const
 idVertexCache::Init
 ==============
 */
-void idVertexCache::Init( bool restart )
+void idVertexCache::Init( int _uniformBufferOffsetAlignment )
 {
 	currentFrame = 0;
 	listNum = 0;
+
+	uniformBufferOffsetAlignment = _uniformBufferOffsetAlignment;
 	
 	mostUsedVertex = 0;
 	mostUsedIndex = 0;
@@ -128,9 +131,9 @@ void idVertexCache::Init( bool restart )
 	
 	for( int i = 0; i < VERTCACHE_NUM_FRAMES; i++ )
 	{
-		AllocGeoBufferSet( frameData[i], VERTCACHE_VERTEX_MEMORY_PER_FRAME, VERTCACHE_INDEX_MEMORY_PER_FRAME, VERTCACHE_JOINT_MEMORY_PER_FRAME );
+		AllocGeoBufferSet( frameData[i], VERTCACHE_VERTEX_MEMORY_PER_FRAME, VERTCACHE_INDEX_MEMORY_PER_FRAME, VERTCACHE_JOINT_MEMORY_PER_FRAME, BU_DYNAMIC );
 	}
-	AllocGeoBufferSet( staticData, STATIC_VERTEX_MEMORY, STATIC_INDEX_MEMORY, 0 );
+	AllocGeoBufferSet( staticData, STATIC_VERTEX_MEMORY, STATIC_INDEX_MEMORY, 0, BU_STATIC);
 	
 	MapGeoBufferSet( frameData[listNum] );
 }
@@ -158,7 +161,7 @@ idVertexCache::PurgeAll
 void idVertexCache::PurgeAll()
 {
 	Shutdown();
-	Init( true );
+	Init( uniformBufferOffsetAlignment );
 }
 
 /*
@@ -194,57 +197,71 @@ vertCacheHandle_t idVertexCache::ActuallyAlloc( geoBufferSet_t& vcs, const void*
 	
 	assert( ( bytes & 15 ) == 0 );
 	
-	// thread safe interlocked adds
-	byte** base = NULL;
 	int	endPos = 0;
-	if( type == CACHE_INDEX )
-	{
-		base = &vcs.mappedIndexBase;
+	int offset = 0;
+
+	switch( type ) {
+	case CACHE_INDEX: {
 		endPos = vcs.indexMemUsed.Add( bytes );
-		if( endPos > vcs.indexBuffer.GetAllocedSize() )
-		{
+		if ( endPos > vcs.indexBuffer.GetAllocedSize() ) {
 			idLib::Error( "Out of index cache" );
 		}
+
+		offset = endPos - bytes;
+
+		if ( data != NULL ) {
+			if ( vcs.indexBuffer.GetUsage() == BU_DYNAMIC ) {
+				MapGeoBufferSet( vcs );
+			}
+			vcs.indexBuffer.Update( data, bytes, offset );
+		}
+
+		break;
 	}
-	else if( type == CACHE_VERTEX )
-	{
-		base = &vcs.mappedVertexBase;
+	case CACHE_VERTEX: {
 		endPos = vcs.vertexMemUsed.Add( bytes );
-		if( endPos > vcs.vertexBuffer.GetAllocedSize() )
-		{
+		if ( endPos > vcs.vertexBuffer.GetAllocedSize() ) {
 			idLib::Error( "Out of vertex cache" );
 		}
+
+		offset = endPos - bytes;
+
+		if ( data != NULL ) {
+			if ( vcs.vertexBuffer.GetUsage() == BU_DYNAMIC ) {
+				MapGeoBufferSet( vcs );
+			}
+			vcs.vertexBuffer.Update( data, bytes, offset );
+		}
+
+		break;
 	}
-	else if( type == CACHE_JOINT )
-	{
-		base = &vcs.mappedJointBase;
+	case CACHE_JOINT: {
 		endPos = vcs.jointMemUsed.Add( bytes );
-		if( endPos > vcs.jointBuffer.GetAllocedSize() )
-		{
+		if ( endPos > vcs.jointBuffer.GetAllocedSize() ) {
 			idLib::Error( "Out of joint buffer cache" );
 		}
+
+		offset = endPos - bytes;
+
+		if ( data != NULL ) {
+			if ( vcs.jointBuffer.GetUsage() == BU_DYNAMIC ) {
+				MapGeoBufferSet( vcs );
+			}
+			vcs.jointBuffer.Update( data, bytes, offset );
+		}
+
+		break;
 	}
-	else
-	{
+	default:
 		assert( false );
 	}
-	
+
 	vcs.allocations++;
-	
-	int offset = endPos - bytes;
-	
-	// Actually perform the data transfer
-	if( data != NULL )
-	{
-		MapGeoBufferSet( vcs );
-		CopyBuffer( *base + offset, ( const byte* )data, bytes );
-	}
-	
-	vertCacheHandle_t handle =	( ( uint64 )( currentFrame & VERTCACHE_FRAME_MASK ) << VERTCACHE_FRAME_SHIFT ) |
-								( ( uint64 )( offset & VERTCACHE_OFFSET_MASK ) << VERTCACHE_OFFSET_SHIFT ) |
-								( ( uint64 )( bytes & VERTCACHE_SIZE_MASK ) << VERTCACHE_SIZE_SHIFT );
-	if( &vcs == &staticData )
-	{
+
+	vertCacheHandle_t handle =	( (uint64)(currentFrame & VERTCACHE_FRAME_MASK ) << VERTCACHE_FRAME_SHIFT ) |
+								( (uint64)(offset & VERTCACHE_OFFSET_MASK ) << VERTCACHE_OFFSET_SHIFT ) |
+								( (uint64)(bytes & VERTCACHE_SIZE_MASK ) << VERTCACHE_SIZE_SHIFT );
+	if ( &vcs == &staticData ) {
 		handle |= VERTCACHE_STATIC;
 	}
 	return handle;
@@ -303,7 +320,7 @@ bool idVertexCache::GetIndexBuffer( vertCacheHandle_t handle, idIndexBuffer* ib 
 idVertexCache::GetJointBuffer
 ==============
 */
-bool idVertexCache::GetJointBuffer( vertCacheHandle_t handle, idJointBuffer* jb )
+bool idVertexCache::GetJointBuffer( vertCacheHandle_t handle, idUniformBuffer* jb )
 {
 	const int isStatic = handle & VERTCACHE_STATIC;
 	const uint64 numBytes = ( int )( handle >> VERTCACHE_SIZE_SHIFT ) & VERTCACHE_SIZE_MASK;
