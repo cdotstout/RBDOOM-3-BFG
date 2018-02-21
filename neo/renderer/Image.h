@@ -263,9 +263,11 @@ public:
 	// RB begin
 	void		GenerateShadowArray( int width, int height, textureFilter_t filter, textureRepeat_t repeat, textureUsage_t usage );
 	// RB end
-	
+
+#if !defined(ID_VULKAN)	
 	void		CopyFramebuffer( int x, int y, int width, int height );
 	void		CopyDepthbuffer( int x, int y, int width, int height );
+#endif
 	
 	void		UploadScratch( const byte* pic, int width, int height );
 	
@@ -345,7 +347,7 @@ public:
 	// they must be a multiple of four for dxt data.
 	void		SubImageUpload( int mipLevel, int destX, int destY, int destZ,
 								int width, int height, const void* data,
-								int pixelPitch = 0 ) const;
+								int pixelPitch = 0 );
 								
 	// SetPixel is assumed to be a fast memory write on consoles, degenerating to a
 	// SubImageUpload on PCs.  Used to update the page mapping images.
@@ -365,10 +367,7 @@ public:
 	
 	
 	
-	bool		IsLoaded() const
-	{
-		return texnum != TEXTURE_NOT_LOADED;
-	}
+	bool		IsLoaded() const;
 	
 	static void	GetGeneratedName( idStr& _name, const textureUsage_t& _usage, const cubeFiles_t& _cube );
 	
@@ -390,11 +389,18 @@ public:
 	
 private:
 	friend class idImageManager;
-	
+	friend class idRenderBackend;
+
 	void		DeriveOpts();
 	void		AllocImage();
 	void		SetSamplerState( textureFilter_t tf, textureRepeat_t tr );
 	
+#if defined( ID_VULKAN )
+	void		CreateSampler();
+
+	static void EmptyGarbage();
+#endif
+
 	// parameters that define this image
 	idStr				imgName;				// game path, including extension (except for cube maps), may be an image program
 	cubeFiles_t			cubeFiles;				// If this is a cube map, and if so, what kind
@@ -414,7 +420,7 @@ private:
 	
 	int					refCount;				// overall ref count
 	
-	static const GLuint TEXTURE_NOT_LOADED = 0xFFFFFFFF;
+	static const uint32_t TEXTURE_NOT_LOADED = 0xFFFFFFFF;
 	
 #if defined( ID_VULKAN )
 	bool				bIsSwapChainImage;
@@ -520,6 +526,7 @@ public:
 	idImage* 			fogImage;					// increasing alpha is denser fog
 	idImage* 			fogEnterImage;				// adjust fogImage alpha based on terminator plane
 	// RB begin
+#if !defined(ID_VULKAN)
 	idImage*			shadowImage[5];
 	idImage*			jitterImage1;				// shadow jitter
 	idImage*			jitterImage4;
@@ -544,6 +551,7 @@ public:
 	idImage*			ambientOcclusionImage[2];		// contain AO and bilateral filtering keys
 	idImage*			hierarchicalZbufferImage;		// zbuffer with mip maps to accelerate screen space ray tracing
 	// RB end
+#endif
 	idImage* 			scratchImage;
 	idImage* 			scratchImage2;
 	idImage* 			accumImage;

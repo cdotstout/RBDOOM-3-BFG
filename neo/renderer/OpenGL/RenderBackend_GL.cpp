@@ -193,7 +193,7 @@ void idRenderBackend::DrawElementsWithCounters( const drawSurf_t* surf )
 	
 	if( surf->jointCache )
 	{
-		idJointBuffer jointBuffer;
+		idUniformBuffer jointBuffer;
 		if( !vertexCache.GetJointBuffer( surf->jointCache, &jointBuffer ) )
 		{
 			idLib::Warning( "RB_DrawElementsWithCounters, jointBuffer == NULL" );
@@ -205,7 +205,7 @@ void idRenderBackend::DrawElementsWithCounters( const drawSurf_t* surf )
 		const GLintptr ubo = reinterpret_cast< GLintptr >( jointBuffer.GetAPIObject() );
 		// RB end
 		
-		glBindBufferRange( GL_UNIFORM_BUFFER, 0, ubo, jointBuffer.GetOffset(), jointBuffer.GetNumJoints() * sizeof( idJointMat ) );
+		glBindBufferRange( GL_UNIFORM_BUFFER, 0, ubo, jointBuffer.GetOffset(), jointBuffer.GetSize() * sizeof( idJointMat ) );
 	}
 	
 	renderProgManager.CommitUniforms();
@@ -927,27 +927,6 @@ void idRenderBackend::GL_Clear( bool color, bool depth, bool stencil, byte stenc
 		}
 	}
 	// RB end
-}
-
-
-/*
-=================
-idRenderBackend::GL_GetCurrentState
-=================
-*/
-uint64 idRenderBackend::GL_GetCurrentState() const
-{
-	return tr.backend.glStateBits;
-}
-
-/*
-========================
-idRenderBackend::GL_GetCurrentStateMinusStencil
-========================
-*/
-uint64 idRenderBackend::GL_GetCurrentStateMinusStencil() const
-{
-	return GL_GetCurrentState() & ~( GLS_STENCIL_OP_BITS | GLS_STENCIL_FUNC_BITS | GLS_STENCIL_FUNC_REF_BITS | GLS_STENCIL_FUNC_MASK_BITS );
 }
 
 

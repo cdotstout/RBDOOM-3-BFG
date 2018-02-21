@@ -103,6 +103,7 @@ public:
 	void		Outdent( renderLogIndentLabel_t label = RENDER_LOG_INDENT_DEFAULT );
 	
 	void		Printf( VERIFY_FORMAT_STRING const char* fmt, ... );
+	void		Printf_NoIndent( const char * fmt, ... );
 	
 	static const int		MAX_LOG_LEVELS = 20;
 	

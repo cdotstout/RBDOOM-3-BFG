@@ -47,14 +47,12 @@ If you have questions concerning this license or the applicable additional terms
 #include "../framework/Common_local.h"
 #endif
 
-// DeviceContext bypasses RenderSystem to work directly with this
-idGuiModel* tr_guiModel;
-
 // functions that are not called every frame
 glconfig_t	glConfig;
 
 idCVar r_requestStereoPixelFormat( "r_requestStereoPixelFormat", "1", CVAR_RENDERER, "Ask for a stereo GL pixel format on startup" );
 idCVar r_debugContext( "r_debugContext", "0", CVAR_RENDERER, "Enable various levels of context debug." );
+idCVar r_multiSamples( "r_multiSamples", "0", CVAR_RENDERER | CVAR_ARCHIVE | CVAR_INTEGER, "number of antialiasing samples" );
 idCVar r_glDriver( "r_glDriver", "", CVAR_RENDERER, "\"opengl32\", etc." );
 idCVar r_skipIntelWorkarounds( "r_skipIntelWorkarounds", "0", CVAR_RENDERER | CVAR_BOOL, "skip workarounds for Intel driver bugs" );
 // RB: disabled 16x MSAA
@@ -914,7 +912,7 @@ void R_InitOpenGL()
 	r_initialized = true;
 	
 	// allocate the vertex array range or vertex objects
-	vertexCache.Init();
+	vertexCache.Init(glConfig.uniformBufferOffsetAlignment);
 	
 	// allocate the frame data, which may be more if smp is enabled
 	R_InitFrameData();
@@ -2580,57 +2578,6 @@ void R_InitCommands()
 	cmdSystem->AddCommand( "reloadSurface", R_ReloadSurface_f, CMD_FL_RENDERER, "reloads the decl and images for selected surface" );
 }
 
-/*
-===============
-idRenderSystemLocal::Clear
-===============
-*/
-void idRenderSystemLocal::Clear()
-{
-	registered = false;
-	frameCount = 0;
-	viewCount = 0;
-	frameShaderTime = 0.0f;
-	ambientLightVector.Zero();
-	worlds.Clear();
-	primaryWorld = NULL;
-	memset( &primaryRenderView, 0, sizeof( primaryRenderView ) );
-	primaryView = NULL;
-	defaultMaterial = NULL;
-	testImage = NULL;
-	ambientCubeImage = NULL;
-	viewDef = NULL;
-	memset( &pc, 0, sizeof( pc ) );
-	memset( &identitySpace, 0, sizeof( identitySpace ) );
-	memset( renderCrops, 0, sizeof( renderCrops ) );
-	currentRenderCrop = 0;
-	currentColorNativeBytesOrder = 0xFFFFFFFF;
-	currentGLState = 0;
-	guiRecursionLevel = 0;
-	guiModel = NULL;
-	memset( gammaTable, 0, sizeof( gammaTable ) );
-	takingScreenshot = false;
-	
-	if( unitSquareTriangles != NULL )
-	{
-		Mem_Free( unitSquareTriangles );
-		unitSquareTriangles = NULL;
-	}
-	
-	if( zeroOneCubeTriangles != NULL )
-	{
-		Mem_Free( zeroOneCubeTriangles );
-		zeroOneCubeTriangles = NULL;
-	}
-	
-	if( testImageTriangles != NULL )
-	{
-		Mem_Free( testImageTriangles );
-		testImageTriangles = NULL;
-	}
-	
-	frontEndJobList = NULL;
-}
 
 /*
 =============

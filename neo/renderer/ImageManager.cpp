@@ -527,6 +527,7 @@ idImage* idImageManager::ScratchImage( const char* _name, idImageOpts* imgOpts, 
 	if( newImage != NULL )
 	{
 		newImage->AllocImage( *imgOpts, filter, repeat );
+		newImage->referencedOutsideLevelLoad = true;
 	}
 	return newImage;
 }

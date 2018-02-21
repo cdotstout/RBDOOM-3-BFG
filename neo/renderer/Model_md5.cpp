@@ -1392,7 +1392,11 @@ idRenderModel* idRenderModelMD5::InstantiateDynamicModel( const struct renderEnt
 	if( staticModel->jointsInverted == NULL )
 	{
 		staticModel->numInvertedJoints = numInvertedJoints;
+#if defined(ID_VULKAN)
+		const int alignment = vkcontext.gpu.props.limits.minUniformBufferOffsetAlignment;
+#else
 		const int alignment = glConfig.uniformBufferOffsetAlignment;
+#endif
 		staticModel->jointsInverted = ( idJointMat* )Mem_ClearedAlloc( ALIGN( numInvertedJoints * sizeof( idJointMat ), alignment ), TAG_JOINTMAT );
 		staticModel->jointsInvertedBuffer = 0;
 	}

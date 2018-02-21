@@ -35,9 +35,16 @@ If you have questions concerning this license or the applicable additional terms
 
 #include "GLState.h"
 #include "ScreenRect.h"
+#include "jobs/ShadowShared.h"
 #include "Image.h"
 #include "Font.h"
 #include "Framebuffer.h"
+
+// class idRenderModelDecal;
+// class idRenderModelOverlay;
+// class idRenderEntity;
+// class idRenderLight;
+// class idInteraction;
 
 // everything that is needed by the backend needs
 // to be double buffered to allow it to run in
@@ -54,6 +61,9 @@ const float	DEFAULT_FOG_DISTANCE	= 500.0f;
 // picky to get the bilerp correct at terminator
 const int FOG_ENTER_SIZE			= 64;
 const float FOG_ENTER				= ( FOG_ENTER_SIZE + 1.0f ) / ( FOG_ENTER_SIZE * 2 );
+
+// vertCacheHandle_t packs size, offset, and frame number into 64 bits
+typedef uint64 vertCacheHandle_t;
 
 enum demoCommand_t
 {
@@ -89,13 +99,19 @@ SURFACES
 ==============================================================================
 */
 
+#include "Model.h"
 #include "ModelDecal.h"
 #include "ModelOverlay.h"
 #include "Interaction.h"
+#include "RenderWorld.h"
 
+struct srfTriangles_t;
 class idRenderWorldLocal;
+class idRenderEntityLocal;
+class idRenderLightLocal;
 struct viewEntity_t;
 struct viewLight_t;
+class idMaterial;
 
 // drawSurf_t structures command the back end to render surfaces
 // a given srfTriangles_t may be used with multiple viewEntity_t,
@@ -550,7 +566,7 @@ struct setBufferCommand_t
 {
 	renderCommand_t		commandId;
 	renderCommand_t* 	next;
-	GLenum	buffer;
+	int	buffer;
 };
 
 struct drawSurfsCommand_t
@@ -585,23 +601,6 @@ struct postProcessCommand_t
 // this is the inital allocation for max number of drawsurfs
 // in a given view, but it will automatically grow if needed
 const int INITIAL_DRAWSURFS =		2048;
-
-enum frameAllocType_t
-{
-	FRAME_ALLOC_VIEW_DEF,
-	FRAME_ALLOC_VIEW_ENTITY,
-	FRAME_ALLOC_VIEW_LIGHT,
-	FRAME_ALLOC_SURFACE_TRIANGLES,
-	FRAME_ALLOC_DRAW_SURFACE,
-	FRAME_ALLOC_INTERACTION_STATE,
-	FRAME_ALLOC_SHADOW_ONLY_ENTITY,
-	FRAME_ALLOC_SHADOW_VOLUME_PARMS,
-	FRAME_ALLOC_SHADER_REGISTER,
-	FRAME_ALLOC_DRAW_SURFACE_POINTER,
-	FRAME_ALLOC_DRAW_COMMAND,
-	FRAME_ALLOC_UNKNOWN,
-	FRAME_ALLOC_MAX
-};
 
 // all of the information needed by the back end must be
 // contained in a idFrameData.  This entire structure is
@@ -675,39 +674,14 @@ struct performanceCounters_t
 };
 
 
-
 enum vertexLayoutType_t
 {
 	LAYOUT_UNKNOWN = 0,
 	LAYOUT_DRAW_VERT,
 	LAYOUT_DRAW_SHADOW_VERT,
-	LAYOUT_DRAW_SHADOW_VERT_SKINNED
+	LAYOUT_DRAW_SHADOW_VERT_SKINNED,
+	NUM_VERTEX_LAYOUTS
 };
-
-/*
-struct glstate_t
-{
-	tmu_t				tmu[MAX_MULTITEXTURE_UNITS];
-
-	int					currenttmu;
-
-	int					faceCulling;
-
-	vertexLayoutType_t	vertexLayout;
-
-	// RB: 64 bit fixes, changed unsigned int to uintptr_t
-	uintptr_t			currentVertexBuffer;
-	uintptr_t			currentIndexBuffer;
-
-	Framebuffer*		currentFramebuffer;
-	// RB end
-
-	float				polyOfsScale;
-	float				polyOfsBias;
-
-	uint64				glStateBits;
-};
-*/
 
 class idParallelJobList;
 
@@ -716,7 +690,8 @@ const int MAX_GUI_SURFACES	= 1024;		// default size of the drawSurfs list for gu
 
 static const int MAX_RENDER_CROPS = 8;
 
-#include "RenderBackend.h"
+#include "RenderBackend.h" // for idRenderBackend
+#include "RenderSystem.h"
 
 /*
 ** Most renderer globals are defined here.
@@ -730,6 +705,8 @@ public:
 	// external functions
 	virtual void			Init();
 	virtual void			Shutdown();
+	virtual void			VidRestart();
+
 	virtual void			ResetGuiModels();
 	virtual void			InitOpenGL();
 	virtual void			ShutdownOpenGL();
@@ -752,6 +729,7 @@ public:
 	virtual void			BeginLevelLoad();
 	virtual void			EndLevelLoad();
 	virtual void			LoadLevelImages();
+
 	virtual void			Preload( const idPreloadManifest& manifest, const char* mapName );
 	virtual void			BeginAutomaticBackgroundSwaps( autoRenderIconType_t icon = AUTORENDER_DEFAULTICON );
 	virtual void			EndAutomaticBackgroundSwaps();
@@ -792,11 +770,10 @@ public:
 	
 	void					PrintPerformanceCounters();
 	
-	
 public:
 	// internal functions
 	idRenderSystemLocal();
-	~idRenderSystemLocal();
+	~idRenderSystemLocal() override;
 	
 	void					UpdateStereo3DMode();
 	
@@ -809,11 +786,24 @@ public:
 	};
 	
 	void					OnFrame();
+
+private:
+	void					InitMaterials();
 	
+	// void					InitFrameData();
+	// void					ShutdownFrameData();
+	// void					ToggleSmpFrame();
+
+	// void					AddDrawViewCmd( viewDef_t * parms, bool guiOnly );
+
+	void					EmitFullscreenGui();
+
+#if defined(ID_VULKAN)
+	bool					m_bInitialized;
+#endif
+
 public:
-	// renderer globals
-	bool					registered;		// cleared at shutdown, set at InitOpenGL
-	
+
 	bool					takingScreenshot;
 	
 	int						frameCount;		// incremented every frame
@@ -875,12 +865,19 @@ public:
 	idParallelJobList* 		frontEndJobList;
 	
 	idRenderBackend			backend;
+
+	// idFrameData				m_smpFrameData[ NUM_FRAME_DATA ];
+	// idFrameData *			m_frameData;
+	// uint32					m_smpFrame;
 	
 	unsigned				timerQueryId;		// for GL_TIME_ELAPSED_EXT queries
 };
 
 extern idRenderSystemLocal	tr;
+
+#if !defined(ID_VULKAN)
 extern glconfig_t			glConfig;		// outside of TR since it shouldn't be cleared during ref re-init
+#endif
 
 //
 // cvars
@@ -891,6 +888,13 @@ extern idCVar r_skipIntelWorkarounds;		// skip work arounds for Intel driver bug
 extern idCVar r_vidMode;					// video mode number
 extern idCVar r_displayRefresh;				// optional display refresh rate option for vid mode
 extern idCVar r_fullscreen;					// 0 = windowed, 1 = full screen
+extern idCVar r_customWidth;
+extern idCVar r_customHeight;
+extern idCVar r_windowX;
+extern idCVar r_windowY;
+extern idCVar r_windowWidth;
+extern idCVar r_windowHeight;
+extern idCVar r_multiSamples;
 extern idCVar r_antiAliasing;				// anti aliasing mode, SMAA, TXAA, MSAA etc.
 
 extern idCVar r_znear;						// near Z clip plane
@@ -1087,7 +1091,6 @@ INITIALIZATION
 */
 
 void R_Init();
-void R_InitOpenGL();
 
 void R_SetColorMappings();
 
@@ -1168,6 +1171,8 @@ void		GLimp_SetGamma( unsigned short red[256],
 							unsigned short green[256],
 							unsigned short blue[256] );
 
+struct SDL_Window;
+struct SDL_Window* GLimp_GetWindow();
 
 
 /*

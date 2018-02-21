@@ -42,6 +42,8 @@ option(USE_SYSTEM_LIBJPEG
 option(USE_SYSTEM_LIBGLEW
                 "Use the system libglew instead of the bundled one" OFF)
 
+option(VULKAN "Use Vulkan instead of OpenGL" OFF)
+
 set(CPU_TYPE "" CACHE STRING "When set, passes this string as CPU-ID which will be embedded into the binary.")
 
 set(CPU_OPTIMIZATION "-mmmx -msse -msse2" CACHE STRING "Which CPU specific optimitations should be used beside the compiler's default?")
@@ -273,6 +275,11 @@ else (GLEW_FOUND)
     add_definitions(-DGLEW_STATIC)
 endif (GLEW_FOUND)
 
+if (VULKAN)
+	add_definitions(-DID_VULKAN)
+	set(VULKAN_LIBRARY "vulkan")
+endif (VULKAN)
+
 add_subdirectory(idlib)
 
 file(GLOB AAS_INCLUDES aas/*.h)
@@ -303,6 +310,8 @@ file(GLOB RENDERER_JOBS_STATICSHADOWVOLUME_INCLUDES renderer/jobs/staticshadowvo
 file(GLOB RENDERER_JOBS_STATICSHADOWVOLUME_SOURCES renderer/jobs/staticshadowvolume/*.cpp)
 file(GLOB RENDERER_OPENGL_INCLUDES renderer/OpenGL/*.h)
 file(GLOB RENDERER_OPENGL_SOURCES renderer/OpenGL/*.cpp)
+file(GLOB RENDERER_VULKAN_INCLUDES renderer/Vulkan/*.h)
+file(GLOB RENDERER_VULKAN_SOURCES renderer/Vulkan/*.cpp)
 file(GLOB RENDERER_SMAA_INCLUDES renderer/SMAA/*.h)
 
 file(GLOB IRRXML_INCLUDES libs/irrxml/src/*.h)
@@ -396,7 +405,7 @@ endif (NOT ZLIB_FOUND)
 file(GLOB MINIZIP_INCLUDES libs/zlib/minizip/*.h)
 file(GLOB MINIZIP_SOURCES libs/zlib/minizip/*.c libs/zlib/minizip/*.cpp)
 	
-if (NOT GLEW_FOUND)
+if (NOT VULKAN AND NOT GLEW_FOUND)
     set(GLEW_INCLUDES libs/glew/include/GL/glew.h)
     set(GLEW_SOURCES libs/glew/src/glew.c)
 
@@ -893,6 +902,8 @@ source_group("renderer\\jobs\\staticshadowvolume" FILES ${RENDERER_JOBS_STATICSH
 
 source_group("renderer\\OpenGL" FILES ${RENDERER_OPENGL_INCLUDES})
 source_group("renderer\\OpenGL" FILES ${RENDERER_OPENGL_SOURCES})
+source_group("renderer\\Vulkan" FILES ${RENDERER_VULKAN_INCLUDES})
+source_group("renderer\\Vulkan" FILES ${RENDERER_VULKAN_SOURCES})
 
 source_group("renderer\\SMAA" FILES ${RENDERER_SMAA_INCLUDES})
 
@@ -1060,6 +1071,7 @@ set(RBDOOM3_INCLUDES
 			${RENDERER_JOBS_PRELIGHTSHADOWVOLUME_INCLUDES}
 			${RENDERER_JOBS_STATICSHADOWVOLUME_INCLUDES}
 			${RENDERER_OPENGL_INCLUDES}
+			${RENDERER_VULKAN_INCLUDES}
 			${RENDERER_SMAA_INCLUDES}
 			${IRRXML_INCLUDES}
 			${JPEG_INCLUDES}
@@ -1083,8 +1095,16 @@ set(RBDOOM3_INCLUDES
 			#${COMPILER_RENDERBUMP_INCLUDES} ${COMPILER_RENDERBUMP_SOURCES}
 			#${COMPILER_ROQVQ_INCLUDES} ${COMPILER_ROQVQ_SOURCES}
 			)
-			
-set(RBDOOM3_SOURCES
+
+set(RBDOOM3_SOURCES "")
+
+if (VULKAN)
+	list(APPEND RBDOOM3_SOURCES ${RENDERER_VULKAN_SOURCES})
+else()
+	list(APPEND RBDOOM3_SOURCES ${RENDERER_OPENGL_SOURCES})
+endif (VULKAN)
+
+list(APPEND RBDOOM3_SOURCES
 			${AAS_SOURCES}
 			${CM_SOURCES}
 			${FRAMEWORK_SOURCES}
@@ -1096,7 +1116,6 @@ set(RBDOOM3_SOURCES
 			${RENDERER_JOBS_DYNAMICSHADOWVOLUME_SOURCES}
 			${RENDERER_JOBS_PRELIGHTSHADOWVOLUME_SOURCES}
 			${RENDERER_JOBS_STATICSHADOWVOLUME_SOURCES}
-			${RENDERER_OPENGL_SOURCES}
 			${IRRXML_SOURCES}
 			${JPEG_SOURCES}
 			${PNG_SOURCES}
@@ -1117,6 +1136,7 @@ set(RBDOOM3_SOURCES
 			#${COMPILER_RENDERBUMP_SOURCES}
 			#${COMPILER_ROQVQ_SOURCES}
 			)
+
 
 add_definitions(-DUSE_DOOMCLASSIC)
 
@@ -1367,8 +1387,10 @@ else()
 	list(APPEND RBDOOM3_SOURCES
 		${SYS_INCLUDES} ${SYS_SOURCES})
 	
-	find_package(OpenGL REQUIRED)
-	include_directories(${OPENGL_INCLUDE_DIRS})
+	if(NOT VULKAN)
+		find_package(OpenGL REQUIRED)
+		include_directories(${OPENGL_INCLUDE_DIRS})
+	endif()
 
 	if(UNIX)
 		if(FFMPEG)
@@ -1519,6 +1541,7 @@ else()
             ${PNG_LIBRARY}
             ${JPEG_LIBRARY}
             ${GLEW_LIBRARY}
+            ${VULKAN_LIBRARY}
 	    ${CMAKE_DL_LIBS}
 			)
 	endif()

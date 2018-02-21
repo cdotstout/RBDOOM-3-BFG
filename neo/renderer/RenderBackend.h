@@ -31,6 +31,16 @@ If you have questions concerning this license or the applicable additional terms
 #ifndef __RENDERER_BACKEND_H__
 #define __RENDERER_BACKEND_H__
 
+#if defined( ID_VULKAN )
+static const int MAX_DESC_UNIFORM_BUFFERS	= 8192;
+static const int MAX_DESC_IMAGE_SAMPLERS	= 12384;
+static const int MAX_DESC_SET_WRITES		= 32;
+static const int MAX_DESC_SET_UNIFORMS		= 48;
+static const int MAX_IMAGE_PARMS			= 16;
+static const int MAX_UBO_PARMS				= 2;
+static const int NUM_TIMESTAMP_QUERIES		= 16;
+#endif
+
 // RB begin
 #define USE_CORE_PROFILE
 
@@ -58,24 +68,44 @@ enum stencilFace_t
 	STENCIL_FACE_NUM
 };
 
-struct backEndCounters_t
-{
+struct backEndCounters_t {
+	backEndCounters_t() :
+		c_surfaces( 0 ),
+		c_shaders( 0 ),
+		c_drawElements( 0 ),
+		c_drawIndexes( 0 ),
+		c_shadowElements( 0 ),
+		c_shadowIndexes( 0 ),
+		c_copyFrameBuffer( 0 ),
+		c_overDraw( 0 ),
+		totalMicroSec( 0 ),
+		shadowMicroSec( 0 ),
+		interactionMicroSec( 0 ),
+		shaderPassMicroSec( 0 ),
+		gpuMicroSec( 0 ) {
+	}
+
 	int		c_surfaces;
 	int		c_shaders;
-	
+
 	int		c_drawElements;
 	int		c_drawIndexes;
-	
+
 	int		c_shadowElements;
 	int		c_shadowIndexes;
-	
+
 	int		c_copyFrameBuffer;
-	
+
 	float	c_overDraw;
-	
-	int		totalMicroSec;		// total microseconds for backend run
-	int		shadowMicroSec;
+
+	uint64	totalMicroSec;		// total microseconds for backend run
+	uint64	shadowMicroSec;
+	uint64	depthMicroSec;
+	uint64	interactionMicroSec;
+	uint64	shaderPassMicroSec;
+	uint64	gpuMicroSec;
 };
+
 
 struct gfxImpParms_t
 {
@@ -124,9 +154,9 @@ struct debugPolygon_t
 
 void RB_SetMVP( const idRenderMatrix& mvp );
 void RB_SetVertexColorParms( stageVertexColor_t svc );
-void RB_GetShaderTextureMatrix( const float* shaderRegisters, const textureStage_t* texture, float matrix[16] );
-void RB_LoadShaderTextureMatrix( const float* shaderRegisters, const textureStage_t* texture );
-void RB_BakeTextureMatrixIntoTexgen( idPlane lightProject[3], const float* textureMatrix );
+//void RB_GetShaderTextureMatrix( const float* shaderRegisters, const textureStage_t* texture, float matrix[16] );
+//void RB_LoadShaderTextureMatrix( const float* shaderRegisters, const textureStage_t* texture );
+//void RB_BakeTextureMatrixIntoTexgen( idPlane lightProject[3], const float* textureMatrix );
 
 //bool ChangeDisplaySettingsIfNeeded( gfxImpParms_t parms );
 //bool CreateGameWindow( gfxImpParms_t parms );
@@ -138,6 +168,7 @@ struct gpuInfo_t
 	VkPhysicalDevice					device;
 	VkPhysicalDeviceProperties			props;
 	VkPhysicalDeviceMemoryProperties	memProps;
+	VkPhysicalDeviceFeatures			features;
 	VkSurfaceCapabilitiesKHR			surfaceCaps;
 	idList< VkSurfaceFormatKHR >		surfaceFormats;
 	idList< VkPresentModeKHR >			presentModes;
@@ -167,11 +198,11 @@ struct vulkanContext_t
 	idList< const char* >			deviceExtensions;
 	idList< const char* >			validationLayers;
 	
-	gpuInfo_t* 						gpu;
+	gpuInfo_t 						gpu;
 	idList< gpuInfo_t >				gpus;
 	
 	VkCommandPool					commandPool;
-	idArray< VkCommandBuffer, NUM_FRAME_DATA >	commandBuffer;
+	idArray< VkCommandBuffer, NUM_FRAME_DATA >	commandBuffers;
 	idArray< VkFence, NUM_FRAME_DATA >			commandBufferFences;
 	idArray< bool, NUM_FRAME_DATA >				commandBufferRecorded;
 	
@@ -196,13 +227,19 @@ struct vulkanContext_t
 #else
 	vulkanAllocation_t				msaaAllocation;
 #endif
-	idArray< idImage*, NUM_FRAME_DATA >		swapchainImages;
+	idArray< VkImage, NUM_FRAME_DATA >		swapchainImages;
+	idArray< VkImageView, NUM_FRAME_DATA >		swapchainViews;
 	idArray< VkFramebuffer, NUM_FRAME_DATA >	frameBuffers;
+	
 	idArray< VkSemaphore, NUM_FRAME_DATA >		acquireSemaphores;
 	idArray< VkSemaphore, NUM_FRAME_DATA >		renderCompleteSemaphores;
 	
 	int											currentImageParm;
 	idArray< idImage*, MAX_IMAGE_PARMS >		imageParms;
+
+	idArray< uint32, NUM_FRAME_DATA >			queryIndex;
+	idArray< idArray< uint64, NUM_TIMESTAMP_QUERIES >, NUM_FRAME_DATA >	queryResults;
+	idArray< VkQueryPool, NUM_FRAME_DATA >		queryPools;
 };
 
 extern vulkanContext_t vkcontext;
@@ -322,11 +359,10 @@ private:
 	void				GL_SeparateStencil( stencilFace_t face, uint64 stencilBits );
 	void				GL_Cull( cullType_t cullType ); // TODO remove
 	
-	void				GL_SelectTexture( int unit );
-//	void				GL_BindTexture( idImage* image );
+	void				GL_BindTexture( int index, idImage * image );
 
-//	void				GL_CopyFrameBuffer( idImage* image, int x, int y, int imageWidth, int imageHeight );
-//	void				GL_CopyDepthBuffer( idImage* image, int x, int y, int imageWidth, int imageHeight );
+	void				GL_CopyFrameBuffer( idImage* image, int x, int y, int imageWidth, int imageHeight );
+	void				GL_CopyDepthBuffer( idImage* image, int x, int y, int imageWidth, int imageHeight );
 
 	// RB: HDR parm
 	void				GL_Clear( bool color, bool depth, bool stencil, byte stencilValue, float r, float g, float b, float a, bool clearHDR = true );
@@ -376,7 +412,24 @@ private:
 	
 //	void				GL_Color( float* color );
 
-	void				SetBuffer( const void* data );
+private:
+	void 				Clear();
+	void				CreateInstance();
+	void 				SelectSuitablePhysicalDevice();
+	void 				CreateLogicalDeviceAndQueues();
+	void				CreateSemaphores();
+	void				CreateQueryPool();
+	void				CreateSurface();
+	void				CreateCommandPool();
+	void				CreateCommandBuffer();
+	void				CreateSwapChain();
+	void				DestroySwapChain();
+	void				CreateRenderTargets();
+	void				DestroyRenderTargets();
+	void				CreateRenderPass();
+	void				CreateFrameBuffers();
+	void				DestroyFrameBuffers();
+//	void				SetBuffer( const void* data );
 	
 private:
 	void				DBG_SimpleSurfaceSetup( const drawSurf_t* drawSurf );
@@ -444,6 +497,8 @@ private:
 	
 	idRenderMatrix		prevMVP[2];				// world MVP from previous frame for motion blur
 	
+	unsigned short		gammaTable[ 256 ];		// brightness / gamma modify this
+
 	// RB begin
 	idRenderMatrix		shadowV[6];				// shadow depth view matrix
 	idRenderMatrix		shadowP[6];				// shadow depth projection matrix
@@ -455,7 +510,7 @@ private:
 	// RB end
 	
 private:
-#if !defined( USE_VULKAN )
+#if !defined( ID_VULKAN )
 	int					currenttmu;
 	
 	unsigned int		currentVertexBuffer;
@@ -475,8 +530,6 @@ public:
 	}
 	
 #if 0
-	unsigned short		gammaTable[ 256 ];		// brightness / gamma modify this
-	
 	idStr				rendererString;
 	idStr				vendorString;
 	idStr				versionString;
