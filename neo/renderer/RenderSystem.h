@@ -243,6 +243,8 @@ public:
 	virtual int				GetHeight() const = 0;
 	virtual int				GetVirtualWidth() const = 0;
 	virtual int				GetVirtualHeight() const = 0;
+
+	virtual bool			IsGpuSkinningSupported() const = 0;
 	
 	// return w/h of a single pixel. This will be 1.0 for normal cases.
 	// A side-by-side stereo 3D frame will have a pixel aspect of 0.5.

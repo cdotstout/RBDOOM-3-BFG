@@ -121,7 +121,7 @@ bool R_PreciseCullSurface( const drawSurf_t* drawSurf, idBounds& ndcBounds )
 	ndcBounds.Clear();
 	
 	// RB: added check wether GPU skinning is available at all
-	const idJointMat* joints = ( tri->staticModelWithJoints != NULL && r_useGPUSkinning.GetBool() && glConfig.gpuSkinningAvailable ) ? tri->staticModelWithJoints->jointsInverted : NULL;
+	const idJointMat* joints = ( tri->staticModelWithJoints != NULL && r_useGPUSkinning.GetBool() && tr.IsGpuSkinningSupported() ) ? tri->staticModelWithJoints->jointsInverted : NULL;
 	// RB end
 	
 	for( int i = 0; i < tri->numVerts; i++ )

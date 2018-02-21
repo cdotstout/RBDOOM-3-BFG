@@ -744,6 +744,7 @@ public:
 	virtual int				GetHeight() const;
 	virtual int				GetVirtualWidth() const;
 	virtual int				GetVirtualHeight() const;
+	virtual bool 			IsGpuSkinningSupported() const;
 	virtual float			GetPixelAspect() const;
 	virtual float			GetPhysicalScreenWidthInCentimeters() const;
 	virtual idRenderWorld* 	AllocRenderWorld();

@@ -3196,6 +3196,16 @@ int idRenderSystemLocal::GetVirtualHeight() const
 
 /*
 ========================
+idRenderSystemLocal::IsGpuSkinningSupported
+========================
+*/
+bool idRenderSystemLocal::IsGpuSkinningSupported() const
+{
+	return glConfig.gpuSkinningAvailable;
+}
+
+/*
+========================
 idRenderSystemLocal::GetStereo3DMode
 ========================
 */
