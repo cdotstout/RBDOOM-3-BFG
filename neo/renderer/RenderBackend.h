@@ -487,7 +487,8 @@ public:
 	
 private:
 	uint64				glStateBits;
-	
+	cullType_t			faceCulling;
+
 	const viewDef_t* 	viewDef;
 	
 	const viewEntity_t*	currentSpace;			// for detecting when a matrix must change
@@ -509,15 +510,15 @@ private:
 	float				hdrKey;
 	// RB end
 	
-private:
-#if !defined( ID_VULKAN )
+#if defined( ID_VULKAN )
+	void 				CommitCurrent(VkCommandBuffer command_buffer);
+#else
 	int					currenttmu;
 	
 	unsigned int		currentVertexBuffer;
 	unsigned int		currentIndexBuffer;
 	Framebuffer*		currentFramebuffer;		// RB: for offscreen rendering
 	
-	int					faceCulling;
 	vertexLayoutType_t	vertexLayout;
 	
 	float				polyOfsScale;
@@ -528,34 +529,6 @@ public:
 	{
 		return currenttmu;
 	}
-	
-#if 0
-	idStr				rendererString;
-	idStr				vendorString;
-	idStr				versionString;
-	idStr				extensionsString;
-	idStr				wglExtensionsString;
-	idStr				shadingLanguageString;
-	
-	float				glVersion;			// atof( version_string )
-	graphicsVendor_t	vendor;
-	
-	int					maxTextureSize;		// queried from GL
-	int					maxTextureCoords;
-	int					maxTextureImageUnits;
-	int					uniformBufferOffsetAlignment;
-	
-	int					colorBits;
-	int					depthBits;
-	int					stencilBits;
-	
-	bool				depthBoundsTestAvailable;
-	bool				timerQueryAvailable;
-	bool				swapControlTearAvailable;
-	
-	int					displayFrequency;
-#endif
-	
 #endif // !defined( USE_VULKAN )
 };
 

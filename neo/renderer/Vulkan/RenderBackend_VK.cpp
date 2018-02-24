@@ -1474,8 +1474,7 @@ void idRenderBackend::DrawElementsWithCounters( const drawSurf_t * surf ) {
 
 	VkCommandBuffer commandBuffer = vkcontext.commandBuffers[ vkcontext.currentFrameData ];
 
-	PrintState( glStateBits );
-	renderProgManager.CommitCurrent( glStateBits, commandBuffer );
+	CommitCurrent(commandBuffer);
 
 	{
 		const VkBuffer buffer = indexBuffer->GetAPIObject();
@@ -1489,6 +1488,12 @@ void idRenderBackend::DrawElementsWithCounters( const drawSurf_t * surf ) {
 	}
 
 	vkCmdDrawIndexed( commandBuffer, surf->numIndexes, 1, ( indexOffset >> 1 ), vertOffset / sizeof( idDrawVert ), 0 );
+}
+
+void idRenderBackend::CommitCurrent(VkCommandBuffer commandBuffer)
+{
+	PrintState( glStateBits );
+	renderProgManager.CommitCurrent( glStateBits, faceCulling, commandBuffer );
 }
 
 /*
@@ -1616,7 +1621,6 @@ may touch, including the editor.
 */
 void idRenderBackend::GL_SetDefaultState() {
 	RENDERLOG_PRINTF( "--- GL_SetDefaultState ---\n" );
-
 	glStateBits = 0;
 
 	GL_State( 0, true );
@@ -1644,7 +1648,7 @@ idRenderBackend::GL_BindTexture
 ====================
 */
 void idRenderBackend::GL_BindTexture( int index, idImage * image ) {
-	//idLib::Printf( "GL_BindTexture( %d, %s )\n", index, image->GetName() );
+	//idLib::Printf( "GL_BindTexture( %d, %s ) repeat %d\n", index, image->GetName(), image->repeat );
 
 	vkcontext.imageParms[ index ] = image;
 }
@@ -1751,6 +1755,7 @@ void idRenderBackend::GL_Color( float r, float g, float b, float a )
 
 void idRenderBackend::GL_Cull( cullType_t cullType )
 {
+	faceCulling = cullType;
 }
 
 /*
@@ -1919,13 +1924,12 @@ void idRenderBackend::DrawStencilShadowPass( const drawSurf_t * drawSurf, const 
 	int indexOffset = (int)( ibHandle >> VERTCACHE_OFFSET_SHIFT ) & VERTCACHE_OFFSET_MASK;
 
 	RENDERLOG_PRINTF( "Binding Buffers(%d): %p:%i %p:%i\n", drawSurf->numIndexes, vertexBuffer, vertOffset, indexBuffer, indexOffset );
-
+	
 	vkcontext.jointCacheHandle = drawSurf->jointCache;
 	
 	VkCommandBuffer commandBuffer = vkcontext.commandBuffers[ vkcontext.currentFrameData ];
 	
-	PrintState( glStateBits );
-	renderProgManager.CommitCurrent( glStateBits, commandBuffer );
+	CommitCurrent( commandBuffer );
 
 	{
 		const VkBuffer buffer = indexBuffer->GetAPIObject();
@@ -1948,8 +1952,7 @@ void idRenderBackend::DrawStencilShadowPass( const drawSurf_t * drawSurf, const 
 						| GLS_BACK_STENCIL_OP_FAIL_KEEP | GLS_BACK_STENCIL_OP_ZFAIL_KEEP | GLS_BACK_STENCIL_OP_PASS_DECR;
 		GL_State( glStateBits & ~GLS_STENCIL_OP_BITS | stencil );
 
-		PrintState( glStateBits );
-		renderProgManager.CommitCurrent( glStateBits, commandBuffer );
+		CommitCurrent(commandBuffer );
 
 		vkCmdDrawIndexed( commandBuffer, drawSurf->numIndexes, 1, ( indexOffset >> 1 ), baseVertex, 0 );
 	}

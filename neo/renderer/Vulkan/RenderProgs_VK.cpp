@@ -802,8 +802,16 @@ void idRenderProgManager::AllocParmBlockBuffer( const idList< int > & parmIndice
 idRenderProgManager::CommitCurrent
 ========================
 */
-void idRenderProgManager::CommitCurrent( uint64 stateBits, VkCommandBuffer commandBuffer ) {
+void idRenderProgManager::CommitCurrent( uint64 stateBits, cullType_t cullType, VkCommandBuffer commandBuffer ) {
 	renderProg_t & prog = m_renderProgs[ currentRenderProgram ];
+
+	switch(cullType) {
+	case CT_FRONT_SIDED: stateBits |= GLS_CULL_FRONTSIDED;
+		break;
+	case CT_BACK_SIDED: stateBits |= GLS_CULL_BACKSIDED;
+		break;
+	case CT_TWO_SIDED: stateBits |= GLS_CULL_TWOSIDED;
+	}
 
 	VkPipeline pipeline = prog.GetPipeline( 
 		stateBits,

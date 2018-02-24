@@ -271,7 +271,7 @@ public:
 	{ 
 		return m_renderProgs[ currentRenderProgram ]; 
 	}
-	void	CommitCurrent( uint64 stateBits, VkCommandBuffer commandBuffer );
+	void	CommitCurrent( uint64 stateBits, cullType_t cullType, VkCommandBuffer commandBuffer );
 	
 	void	ClearPipelines();
 	void	PrintPipelineStates();
