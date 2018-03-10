@@ -705,7 +705,6 @@ public:
 	// external functions
 	virtual void			Init();
 	virtual void			Shutdown();
-	virtual void			VidRestart();
 
 	virtual void			ResetGuiModels();
 	virtual void			InitOpenGL();
@@ -1035,6 +1034,8 @@ extern idCVar r_debugRenderToTexture;
 extern idCVar stereoRender_deGhost;			// subtract from opposite eye to reduce ghosting
 
 extern idCVar r_useGPUSkinning;
+extern idCVar r_useSeamlessCubeMap;
+extern idCVar stereoRender_enable;
 
 // RB begin
 extern idCVar r_shadowMapFrustumFOV;

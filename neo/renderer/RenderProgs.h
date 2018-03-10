@@ -157,7 +157,8 @@ enum renderParm_t
 	RENDERPARM_SHADOW_MATRIX_5_W,
 	// RB end
 	
-	RENDERPARM_USER0,
+	RENDERPARM_USER,
+	RENDERPARM_USER0 = RENDERPARM_USER,
 	RENDERPARM_USER1,
 	RENDERPARM_USER2,
 	RENDERPARM_USER3,
@@ -295,6 +296,9 @@ public:
 	{
 		return vertexShaders[currentVertexShader].optionalSkinning;
 	}
+
+	void		CommitUniforms();
+	void		ZeroUniforms();
 
 #endif
 
@@ -646,6 +650,10 @@ public:
 		BindShader_Builtin( BUILTIN_DEBUG_SHADOWMAP );
 	}
 	// RB end
+
+	// RB begin
+	bool		IsShaderBound() const;
+	// RB end
 #endif
 			
 	// this should only be called via the reload shader console command
@@ -796,10 +804,7 @@ private:
 		return currentRenderProgram;
 	}
 	void		SetUniformValue( const renderParm_t rp, const float* value );
-	void		CommitUniforms();
-	int			FindGLSLProgram( const char* name, int vIndex, int fIndex );
-	void		ZeroUniforms();
-
+	
 	void	LoadVertexShader( int index );
 	void	LoadFragmentShader( int index );
 	
@@ -857,7 +862,7 @@ private:
 		idList<glslUniformLocation_t> uniformLocations;
 	};
 	idList<glslProgram_t, TAG_RENDER> glslPrograms;
-	
+	idStaticList < idVec4, RENDERPARM_USER0 + MAX_GLSL_USER_PARMS > glslUniforms;
 	
 	int				currentVertexShader;
 	int				currentFragmentShader;

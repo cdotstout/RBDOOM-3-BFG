@@ -4914,63 +4914,6 @@ BACKEND COMMANDS
 */
 
 /*
-=============
-idRenderBackend::ExecuteBackEndCommands
-
-This function will be called syncronously if running without
-smp extensions, or asyncronously by another thread.
-=============
-*/
-void idRenderBackend::ExecuteBackEndCommands( const emptyCommand_t* cmds )
-{
-	CheckCVars();
-
-	//resolutionScale.SetCurrentGPUFrameTime( commonLocal.m_mainFrameTiming.gpuTime );
-
-	ResizeImages();
-
-	// renderLog.StartFrame();
-	GL_StartFrame();
-
-	uint64 backEndStartTime = Sys_Microseconds();
-
-	// needed for editor rendering
-	GL_SetDefaultState();
-
-	for( ; cmds != NULL; cmds = ( const emptyCommand_t* )cmds->next )
-	{
-		switch( cmds->commandId ) {
-			case RC_NOP:
-				break;
-			case RC_DRAW_VIEW_GUI:
-			case RC_DRAW_VIEW_3D:
-				DrawView( cmds, 0 );
-				break;
-			case RC_COPY_RENDER:
-				CopyRender( cmds );
-				break;
-			case RC_SET_BUFFER:
-				//RB_SetBuffer( cmds );
-				//c_setBuffers++;
-				break;
-			case RC_POST_PROCESS:
-				PostProcess( cmds );
-				break;
-			default:
-				idLib::Error( "ExecuteBackEndCommands: bad commandId" );
-				break;
-		}
-	}
-
-	GL_EndFrame();
-
-	// // stop rendering on this thread
-	// //m_pc.totalMicroSec = Sys_Microseconds() - backEndStartTime;
-
-	// renderLog.EndFrame();
-}
-
-/*
 ==================
 idRenderBackend::DrawViewInternal
 ==================
@@ -5006,9 +4949,7 @@ void idRenderBackend::DrawViewInternal( const viewDef_t* _viewDef, const int ste
 	//-------------------------------------------------
 	ResetViewportAndScissorToDefaultCamera( _viewDef );
 	
-#if !defined(ID_VULKAN)
-	faceCulling = -1;		// force face culling to set next time
-#endif
+	faceCulling = CT_INVALID;		// force face culling to set next time
 
 	// ensures that depth writes are enabled for the depth clear
 	GL_State( GLS_DEFAULT );

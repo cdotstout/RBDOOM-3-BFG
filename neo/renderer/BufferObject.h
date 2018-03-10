@@ -100,8 +100,11 @@ protected:
 #endif
 
 #else
+public:
 	void*				GetAPIObject() const { return apiObject; }
 	void* 				apiObject;
+
+protected:
 #endif /* ID_VULKAN */
 
 	// sizeof() confuses typeinfo...

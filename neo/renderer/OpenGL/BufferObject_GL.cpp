@@ -80,60 +80,6 @@ void UnbindBufferObjects()
 ================================================================================================
 */
 
-#if defined(USE_INTRINSICS)
-
-void CopyBuffer( byte* dst, const byte* src, int numBytes )
-{
-	assert_16_byte_aligned( dst );
-	assert_16_byte_aligned( src );
-	
-	int i = 0;
-	for( ; i + 128 <= numBytes; i += 128 )
-	{
-		__m128i d0 = _mm_load_si128( ( __m128i* )&src[i + 0 * 16] );
-		__m128i d1 = _mm_load_si128( ( __m128i* )&src[i + 1 * 16] );
-		__m128i d2 = _mm_load_si128( ( __m128i* )&src[i + 2 * 16] );
-		__m128i d3 = _mm_load_si128( ( __m128i* )&src[i + 3 * 16] );
-		__m128i d4 = _mm_load_si128( ( __m128i* )&src[i + 4 * 16] );
-		__m128i d5 = _mm_load_si128( ( __m128i* )&src[i + 5 * 16] );
-		__m128i d6 = _mm_load_si128( ( __m128i* )&src[i + 6 * 16] );
-		__m128i d7 = _mm_load_si128( ( __m128i* )&src[i + 7 * 16] );
-		_mm_stream_si128( ( __m128i* )&dst[i + 0 * 16], d0 );
-		_mm_stream_si128( ( __m128i* )&dst[i + 1 * 16], d1 );
-		_mm_stream_si128( ( __m128i* )&dst[i + 2 * 16], d2 );
-		_mm_stream_si128( ( __m128i* )&dst[i + 3 * 16], d3 );
-		_mm_stream_si128( ( __m128i* )&dst[i + 4 * 16], d4 );
-		_mm_stream_si128( ( __m128i* )&dst[i + 5 * 16], d5 );
-		_mm_stream_si128( ( __m128i* )&dst[i + 6 * 16], d6 );
-		_mm_stream_si128( ( __m128i* )&dst[i + 7 * 16], d7 );
-	}
-	for( ; i + 16 <= numBytes; i += 16 )
-	{
-		__m128i d = _mm_load_si128( ( __m128i* )&src[i] );
-		_mm_stream_si128( ( __m128i* )&dst[i], d );
-	}
-	for( ; i + 4 <= numBytes; i += 4 )
-	{
-		*( uint32* )&dst[i] = *( const uint32* )&src[i];
-	}
-	for( ; i < numBytes; i++ )
-	{
-		dst[i] = src[i];
-	}
-	_mm_sfence();
-}
-
-#else
-
-void CopyBuffer( byte* dst, const byte* src, int numBytes )
-{
-	assert_16_byte_aligned( dst );
-	assert_16_byte_aligned( src );
-	memcpy( dst, src, numBytes );
-}
-
-#endif
-
 /*
 ================================================================================================
 
@@ -141,16 +87,6 @@ void CopyBuffer( byte* dst, const byte* src, int numBytes )
 
 ================================================================================================
 */
-
-/*
-========================
-idVertexBuffer::idVertexBuffer
-========================
-*/
-idVertexBuffer::idVertexBuffer()
-{
-	SetUnmapped();
-}
 
 /*
 ========================
@@ -246,46 +182,6 @@ void idVertexBuffer::FreeBufferObject()
 	// RB end
 	
 	ClearWithoutFreeing();
-}
-
-/*
-========================
-idVertexBuffer::Reference
-========================
-*/
-void idVertexBuffer::Reference( const idVertexBuffer& other )
-{
-	assert( IsMapped() == false );
-	//assert( other.IsMapped() == false );	// this happens when building idTriangles while at the same time setting up idDrawVerts
-	assert( other.GetAPIObject() != NULL );
-	assert( other.GetSize() > 0 );
-	
-	FreeBufferObject();
-	size = other.GetSize();						// this strips the MAPPED_FLAG
-	offsetInOtherBuffer = other.GetOffset();	// this strips the OWNS_BUFFER_FLAG
-	apiObject = other.apiObject;
-	assert( OwnsBuffer() == false );
-}
-
-/*
-========================
-idVertexBuffer::Reference
-========================
-*/
-void idVertexBuffer::Reference( const idVertexBuffer& other, int refOffset, int refSize )
-{
-	assert( IsMapped() == false );
-	//assert( other.IsMapped() == false );	// this happens when building idTriangles while at the same time setting up idDrawVerts
-	assert( other.GetAPIObject() != NULL );
-	assert( refOffset >= 0 );
-	assert( refSize >= 0 );
-	assert( refOffset + refSize <= other.GetSize() );
-	
-	FreeBufferObject();
-	size = refSize;
-	offsetInOtherBuffer = other.GetOffset() + refOffset;
-	apiObject = other.apiObject;
-	assert( OwnsBuffer() == false );
 }
 
 /*
@@ -423,26 +319,6 @@ void idVertexBuffer::ClearWithoutFreeing()
 
 /*
 ========================
-idIndexBuffer::idIndexBuffer
-========================
-*/
-idIndexBuffer::idIndexBuffer()
-{
-	SetUnmapped();
-}
-
-/*
-========================
-idIndexBuffer::~idIndexBuffer
-========================
-*/
-idIndexBuffer::~idIndexBuffer()
-{
-	FreeBufferObject();
-}
-
-/*
-========================
 idIndexBuffer::AllocBufferObject
 ========================
 */
@@ -536,46 +412,6 @@ void idIndexBuffer::FreeBufferObject()
 	// RB end
 	
 	ClearWithoutFreeing();
-}
-
-/*
-========================
-idIndexBuffer::Reference
-========================
-*/
-void idIndexBuffer::Reference( const idIndexBuffer& other )
-{
-	assert( IsMapped() == false );
-	//assert( other.IsMapped() == false );	// this happens when building idTriangles while at the same time setting up triIndex_t
-	assert( other.GetAPIObject() != NULL );
-	assert( other.GetSize() > 0 );
-	
-	FreeBufferObject();
-	size = other.GetSize();						// this strips the MAPPED_FLAG
-	offsetInOtherBuffer = other.GetOffset();	// this strips the OWNS_BUFFER_FLAG
-	apiObject = other.apiObject;
-	assert( OwnsBuffer() == false );
-}
-
-/*
-========================
-idIndexBuffer::Reference
-========================
-*/
-void idIndexBuffer::Reference( const idIndexBuffer& other, int refOffset, int refSize )
-{
-	assert( IsMapped() == false );
-	//assert( other.IsMapped() == false );	// this happens when building idTriangles while at the same time setting up triIndex_t
-	assert( other.GetAPIObject() != NULL );
-	assert( refOffset >= 0 );
-	assert( refSize >= 0 );
-	assert( refOffset + refSize <= other.GetSize() );
-	
-	FreeBufferObject();
-	size = refSize;
-	offsetInOtherBuffer = other.GetOffset() + refOffset;
-	apiObject = other.apiObject;
-	assert( OwnsBuffer() == false );
 }
 
 /*
@@ -710,16 +546,6 @@ void idIndexBuffer::ClearWithoutFreeing()
 
 /*
 ========================
-idUniformBuffer::idUniformBuffer
-========================
-*/
-idUniformBuffer::idUniformBuffer()
-{
-	SetUnmapped();
-}
-
-/*
-========================
 idUniformBuffer::AllocBufferObject
 ========================
 */
@@ -797,46 +623,6 @@ void idUniformBuffer::FreeBufferObject()
 	// RB end
 	
 	ClearWithoutFreeing();
-}
-
-/*
-========================
-idUniformBuffer::Reference
-========================
-*/
-void idUniformBuffer::Reference( const idUniformBuffer& other )
-{
-	assert( IsMapped() == false );
-	assert( other.IsMapped() == false );
-	assert( other.GetAPIObject() != NULL );
-	assert( other.GetSize() > 0 );
-	
-	FreeBufferObject();
-	size = other.GetSize();			// this strips the MAPPED_FLAG
-	offsetInOtherBuffer = other.GetOffset();	// this strips the OWNS_BUFFER_FLAG
-	apiObject = other.apiObject;
-	assert( OwnsBuffer() == false );
-}
-
-/*
-========================
-idUniformBuffer::Reference
-========================
-*/
-void idUniformBuffer::Reference( const idUniformBuffer& other, int refOffset, int refSize )
-{
-	assert( IsMapped() == false );
-	assert( other.IsMapped() == false );
-	assert( other.GetAPIObject() != NULL );
-	assert( refOffset >= 0 );
-	assert( refSize >= 0 );
-	assert( refOffset + refSize <= other.GetSize() );
-	
-	FreeBufferObject();
-	size = refSize;
-	offsetInOtherBuffer = other.GetOffset() + refOffset;
-	apiObject = other.apiObject;
-	assert( OwnsBuffer() == false );
 }
 
 /*

@@ -253,7 +253,6 @@ public:
 	
 	virtual void			InitOpenGL() = 0;
 	virtual void			ShutdownOpenGL() = 0;
-	virtual void			VidRestart() = 0;
 
 	virtual bool			IsOpenGLRunning() const = 0;
 	

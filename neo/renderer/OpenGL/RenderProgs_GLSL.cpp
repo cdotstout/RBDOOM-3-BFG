@@ -29,9 +29,9 @@ If you have questions concerning this license or the applicable additional terms
 
 #pragma hdrstop
 #include "precompiled.h"
-
-#include "RenderCommon.h"
-#include "RenderProgs_embedded.h"
+#include "../RenderCommon.h"
+#include "../RenderProgs.h"
+#include "../RenderProgs_embedded.h"
 
 idCVar r_skipStripDeadCode( "r_skipStripDeadCode", "0", CVAR_BOOL, "Skip stripping dead code" );
 idCVar r_useUniformArrays( "r_useUniformArrays", "1", CVAR_BOOL, "" );
@@ -1821,10 +1821,10 @@ GLuint idRenderProgManager::LoadGLSLShader( GLenum target, const char* name, con
 }
 /*
 ================================================================================================
-idRenderProgManager::FindGLSLProgram
+idRenderProgManager::FindProgram
 ================================================================================================
 */
-int	 idRenderProgManager::FindGLSLProgram( const char* name, int vIndex, int fIndex )
+int	 idRenderProgManager::FindProgram( const char* name, int vIndex, int fIndex )
 {
 
 	for( int i = 0; i < glslPrograms.Num(); ++i )
@@ -1985,15 +1985,6 @@ void idRenderProgManager::CommitUniforms()
 	//GL_CheckErrors();
 }
 
-class idSort_QuickUniforms : public idSort_Quick< glslUniformLocation_t, idSort_QuickUniforms >
-{
-public:
-	int Compare( const glslUniformLocation_t& a, const glslUniformLocation_t& b ) const
-	{
-		return a.uniformIndex - b.uniformIndex;
-	}
-};
-
 /*
 ================================================================================================
 idRenderProgManager::LoadGLSLProgram
@@ -2001,6 +1992,15 @@ idRenderProgManager::LoadGLSLProgram
 */
 void idRenderProgManager::LoadGLSLProgram( const int programIndex, const int vertexShaderIndex, const int fragmentShaderIndex )
 {
+	class idSort_QuickUniforms : public idSort_Quick< glslUniformLocation_t, idSort_QuickUniforms >
+	{
+	public:
+		int Compare( const glslUniformLocation_t& a, const glslUniformLocation_t& b ) const
+		{
+			return a.uniformIndex - b.uniformIndex;
+		}
+	};
+
 	glslProgram_t& prog = glslPrograms[programIndex];
 	
 	if( prog.progId != INVALID_PROGID )

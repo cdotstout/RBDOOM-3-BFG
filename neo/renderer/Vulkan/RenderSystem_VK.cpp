@@ -483,56 +483,6 @@ void idRenderSystemLocal::Shutdown() {
 
 /*
 =================
-idRenderSystemLocal::VidRestart
-=================
-*/
-void idRenderSystemLocal::VidRestart() {
-	if ( !m_bInitialized ) {
-		return;
-	}
-
-	// set the mode without re-initializing the context
-	SetNewMode();
-
-#if 0
-	// this could take a while, so give them the cursor back ASAP
-	Sys_GrabMouseCursor( false );
-
-	// dump ambient caches
-	renderModelManager->FreeModelVertexCaches();
-
-	// free any current world interaction surfaces and vertex caches
-	FreeWorldDerivedData();
-
-	// make sure the defered frees are actually freed
-	ToggleSmpFrame();
-	ToggleSmpFrame();
-
-	// free the vertex caches so they will be regenerated again
-	vertexCache.PurgeAll();
-
-	// sound and input are tied to the window we are about to destroy
-
-	// free all of our texture numbers
-	Sys_ShutdownInput();
-	globalImages->PurgeAllImages();
-	// free the context and close the window
-	Shutdown();
-
-	// create the new context and vertex cache
-	Init();
-
-	// regenerate all images
-	globalImages->ReloadImages( true );
-
-	// make sure the regeneration doesn't use anything no longer valid
-	viewCount++;
-	viewDef = NULL;
-#endif
-}
-
-/*
-=================
 idRenderSystemLocal::InitMaterials
 =================
 */

@@ -53,7 +53,6 @@ extern idCVar r_useScissor;
 extern idCVar r_useShadowDepthBounds;
 extern idCVar r_forceZPassStencilShadows;
 extern idCVar r_useStencilShadowPreload;
-extern idCVar r_singleTriangle;
 extern idCVar r_useLightDepthBounds;
 extern idCVar r_swapInterval;
 
@@ -1420,6 +1419,63 @@ BACKEND COMMANDS
 
 /*
 =============
+idRenderBackend::ExecuteBackEndCommands
+
+This function will be called syncronously if running without
+smp extensions, or asyncronously by another thread.
+=============
+*/
+void idRenderBackend::ExecuteBackEndCommands( const emptyCommand_t* cmds )
+{
+	CheckCVars();
+
+	//resolutionScale.SetCurrentGPUFrameTime( commonLocal.m_mainFrameTiming.gpuTime );
+
+	ResizeImages();
+
+	// renderLog.StartFrame();
+	GL_StartFrame();
+
+	uint64 backEndStartTime = Sys_Microseconds();
+
+	// needed for editor rendering
+	GL_SetDefaultState();
+
+	for( ; cmds != NULL; cmds = ( const emptyCommand_t* )cmds->next )
+	{
+		switch( cmds->commandId ) {
+			case RC_NOP:
+				break;
+			case RC_DRAW_VIEW_GUI:
+			case RC_DRAW_VIEW_3D:
+				DrawView( cmds, 0 );
+				break;
+			case RC_COPY_RENDER:
+				CopyRender( cmds );
+				break;
+			case RC_SET_BUFFER:
+				//RB_SetBuffer( cmds );
+				//c_setBuffers++;
+				break;
+			case RC_POST_PROCESS:
+				PostProcess( cmds );
+				break;
+			default:
+				idLib::Error( "ExecuteBackEndCommands: bad commandId" );
+				break;
+		}
+	}
+
+	GL_EndFrame();
+
+	// // stop rendering on this thread
+	// //m_pc.totalMicroSec = Sys_Microseconds() - backEndStartTime;
+
+	// renderLog.EndFrame();
+}
+
+/*
+=============
 idRenderBackend::DrawElementsWithCounters
 =============
 */
@@ -1622,6 +1678,7 @@ may touch, including the editor.
 void idRenderBackend::GL_SetDefaultState() {
 	RENDERLOG_PRINTF( "--- GL_SetDefaultState ---\n" );
 	glStateBits = 0;
+	faceCulling = CT_INVALID;
 
 	GL_State( 0, true );
 
@@ -1755,6 +1812,7 @@ void idRenderBackend::GL_Color( float r, float g, float b, float a )
 
 void idRenderBackend::GL_Cull( cullType_t cullType )
 {
+	assert(cullType != CT_INVALID);
 	faceCulling = cullType;
 }
 
@@ -1956,21 +2014,4 @@ void idRenderBackend::DrawStencilShadowPass( const drawSurf_t * drawSurf, const 
 
 		vkCmdDrawIndexed( commandBuffer, drawSurf->numIndexes, 1, ( indexOffset >> 1 ), baseVertex, 0 );
 	}
-}
-
-/*
-======================
-idRenderBackend::GL_GetCurrentStateMinusStencil
-
-Handles generating a cinematic frame if needed
-======================
-*/
-uint64 idRenderBackend::GL_GetCurrentStateMinusStencil() const 
-{
-	return glStateBits & ~(GLS_STENCIL_OP_BITS|GLS_STENCIL_FUNC_BITS|GLS_STENCIL_FUNC_REF_BITS|GLS_STENCIL_FUNC_MASK_BITS);
-}
-
-uint64 idRenderBackend::GL_GetCurrentState() const 
-{
-	return glStateBits;
 }

@@ -48,6 +48,8 @@ idCVar stereoRender_warpTargetFraction( "stereoRender_warpTargetFraction", "1.0"
 idCVar r_showSwapBuffers( "r_showSwapBuffers", "0", CVAR_BOOL, "Show timings from GL_BlockingSwapBuffers" );
 idCVar r_syncEveryFrame( "r_syncEveryFrame", "1", CVAR_BOOL, "Don't let the GPU buffer execution past swapbuffers" );
 
+extern idCVar r_useStencilShadowPreload;
+
 static int		swapIndex;		// 0 or 1 into renderSync
 static GLsync	renderSync[2];
 
@@ -325,7 +327,7 @@ void idRenderBackend::GL_SetDefaultState()
 	currentVertexBuffer = 0;
 	currentIndexBuffer = 0;
 	currentFramebuffer = 0;
-	faceCulling = 0;
+	faceCulling = CT_INVALID;
 	vertexLayout = LAYOUT_UNKNOWN;
 	polyOfsScale = 0.0f;
 	polyOfsBias = 0.0f;
@@ -764,6 +766,16 @@ void idRenderBackend::GL_SelectTexture( int unit )
 
 /*
 ====================
+idRenderBackend::GL_BindTexture
+====================
+*/
+void idRenderBackend::GL_BindTexture( int index, idImage * image ) {
+	GL_SelectTexture(index);
+	image->Bind();
+}
+
+/*
+====================
 idRenderBackend::GL_Cull
 
 This handles the flipping needed when the view being
@@ -772,6 +784,8 @@ rendered is a mirored view.
 */
 void idRenderBackend::GL_Cull( cullType_t cullType )
 {
+	assert(cullType != CT_INVALID);
+
 	if( faceCulling == cullType )
 	{
 		return;
@@ -929,6 +943,25 @@ void idRenderBackend::GL_Clear( bool color, bool depth, bool stencil, byte stenc
 	// RB end
 }
 
+/*
+====================
+idRenderBackend::GL_CopyFrameBuffer
+====================
+*/
+void idRenderBackend::GL_CopyFrameBuffer( idImage * image, int x, int y, int imageWidth, int imageHeight ) 
+{
+	image->CopyFramebuffer(x, y, imageWidth, imageHeight);
+}
+
+/*
+====================
+idRenderBackend::GL_CopyDepthBuffer
+====================
+*/
+void idRenderBackend::GL_CopyDepthBuffer( idImage * image, int x, int y, int imageWidth, int imageHeight ) 
+{
+	image->CopyDepthbuffer(x, y, imageWidth, imageHeight);
+}
 
 /*
 =============
@@ -1393,33 +1426,25 @@ void idRenderBackend::StereoRenderExecuteBackEndCommands( const emptyCommand_t* 
 	{
 		case STEREO3D_QUAD_BUFFER:
 			glDrawBuffer( GL_BACK_RIGHT );
-			GL_SelectTexture( 0 );
-			stereoRenderImages[1]->Bind();
-			GL_SelectTexture( 1 );
-			stereoRenderImages[0]->Bind();
+			GL_BindTexture( 0, stereoRenderImages[1]);
+			GL_BindTexture( 1, stereoRenderImages[0]);
 			DrawElementsWithCounters( &unitSquareSurface );
 			
 			glDrawBuffer( GL_BACK_LEFT );
-			GL_SelectTexture( 1 );
-			stereoRenderImages[1]->Bind();
-			GL_SelectTexture( 0 );
-			stereoRenderImages[0]->Bind();
+			GL_BindTexture( 1, stereoRenderImages[1]);
+			GL_BindTexture( 0, stereoRenderImages[0]);
 			DrawElementsWithCounters( &unitSquareSurface );
 			break;
 			
 		case STEREO3D_HDMI_720:
 			// HDMI 720P 3D
-			GL_SelectTexture( 0 );
-			stereoRenderImages[1]->Bind();
-			GL_SelectTexture( 1 );
-			stereoRenderImages[0]->Bind();
+			GL_BindTexture( 0, stereoRenderImages[1]);
+			GL_BindTexture( 1, stereoRenderImages[0]);
 			GL_ViewportAndScissor( 0, 0, 1280, 720 );
 			DrawElementsWithCounters( &unitSquareSurface );
 			
-			GL_SelectTexture( 0 );
-			stereoRenderImages[0]->Bind();
-			GL_SelectTexture( 1 );
-			stereoRenderImages[1]->Bind();
+			GL_BindTexture( 0, stereoRenderImages[0]);
+			GL_BindTexture( 1, stereoRenderImages[1]);
 			GL_ViewportAndScissor( 0, 750, 1280, 720 );
 			DrawElementsWithCounters( &unitSquareSurface );
 			
@@ -1461,8 +1486,7 @@ void idRenderBackend::StereoRenderExecuteBackEndCommands( const emptyCommand_t* 
 				// don't use GL_Color(), because we don't want to clamp
 				renderProgManager.SetRenderParm( RENDERPARM_COLOR, color.ToFloatPtr() );
 				
-				GL_SelectTexture( 0 );
-				stereoRenderImages[0]->Bind();
+				GL_BindTexture( 0, stereoRenderImages[0]);
 				glTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER );
 				glTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER );
 				DrawElementsWithCounters( &unitSquareSurface );
@@ -1476,8 +1500,7 @@ void idRenderBackend::StereoRenderExecuteBackEndCommands( const emptyCommand_t* 
 							pixelDimensions, pixelDimensions );
 				glScissor( glConfig.nativeScreenWidth >> 1, 0, glConfig.nativeScreenWidth >> 1, glConfig.nativeScreenHeight );
 				
-				GL_SelectTexture( 0 );
-				stereoRenderImages[1]->Bind();
+				GL_BindTexture( 0, stereoRenderImages[1]);
 				glTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER );
 				glTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER );
 				DrawElementsWithCounters( &unitSquareSurface );
@@ -1487,46 +1510,36 @@ void idRenderBackend::StereoRenderExecuteBackEndCommands( const emptyCommand_t* 
 		// a non-warped side-by-side-uncompressed (dual input cable) is rendered
 		// just like STEREO3D_SIDE_BY_SIDE_COMPRESSED, so fall through.
 		case STEREO3D_SIDE_BY_SIDE_COMPRESSED:
-			GL_SelectTexture( 0 );
-			stereoRenderImages[0]->Bind();
-			GL_SelectTexture( 1 );
-			stereoRenderImages[1]->Bind();
+			GL_BindTexture( 0, stereoRenderImages[0]);
+			GL_BindTexture( 1, stereoRenderImages[1]);
 			GL_ViewportAndScissor( 0, 0, renderSystem->GetWidth(), renderSystem->GetHeight() );
 			DrawElementsWithCounters( &unitSquareSurface );
 			
-			GL_SelectTexture( 0 );
-			stereoRenderImages[1]->Bind();
-			GL_SelectTexture( 1 );
-			stereoRenderImages[0]->Bind();
+			GL_BindTexture( 0, stereoRenderImages[1]);
+			GL_BindTexture( 1, stereoRenderImages[0]);
 			GL_ViewportAndScissor( renderSystem->GetWidth(), 0, renderSystem->GetWidth(), renderSystem->GetHeight() );
 			DrawElementsWithCounters( &unitSquareSurface );
 			break;
 			
 		case STEREO3D_TOP_AND_BOTTOM_COMPRESSED:
-			GL_SelectTexture( 1 );
-			stereoRenderImages[0]->Bind();
-			GL_SelectTexture( 0 );
-			stereoRenderImages[1]->Bind();
+			GL_BindTexture( 1, stereoRenderImages[0]);
+			GL_BindTexture( 0, stereoRenderImages[1]);
 			GL_ViewportAndScissor( 0, 0, renderSystem->GetWidth(), renderSystem->GetHeight() );
 			DrawElementsWithCounters( &unitSquareSurface );
 			
-			GL_SelectTexture( 1 );
-			stereoRenderImages[1]->Bind();
-			GL_SelectTexture( 0 );
-			stereoRenderImages[0]->Bind();
+			GL_BindTexture( 1, stereoRenderImages[1]);
+			GL_BindTexture( 0, stereoRenderImages[0]);
 			GL_ViewportAndScissor( 0, renderSystem->GetHeight(), renderSystem->GetWidth(), renderSystem->GetHeight() );
 			DrawElementsWithCounters( &unitSquareSurface );
 			break;
 			
 		case STEREO3D_INTERLACED:
 			// every other scanline
-			GL_SelectTexture( 0 );
-			stereoRenderImages[0]->Bind();
+			GL_BindTexture( 0, stereoRenderImages[0]);
 			glTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST );
 			glTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST );
 			
-			GL_SelectTexture( 1 );
-			stereoRenderImages[1]->Bind();
+			GL_BindTexture( 1, stereoRenderImages[1]);
 			glTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST );
 			glTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST );
 			
@@ -1653,4 +1666,204 @@ void idRenderBackend::ExecuteBackEndCommands( const emptyCommand_t* cmds )
 	}
 	
 	renderLog.EndFrame();
+}
+
+/*
+==============================================================================================
+
+STENCIL SHADOW RENDERING
+
+==============================================================================================
+*/
+
+/*
+=====================
+idRenderBackend::DrawStencilShadowPass
+=====================
+*/
+void idRenderBackend::DrawStencilShadowPass( const drawSurf_t * drawSurf, const bool renderZPass ) {
+
+	if( renderZPass )
+	{
+		// Z-pass
+		glStencilOpSeparate( GL_FRONT, GL_KEEP, GL_KEEP, GL_INCR );
+		glStencilOpSeparate( GL_BACK, GL_KEEP, GL_KEEP, GL_DECR );
+	}
+	else if( r_useStencilShadowPreload.GetBool() )
+	{
+		// preload + Z-pass
+		glStencilOpSeparate( GL_FRONT, GL_KEEP, GL_DECR, GL_DECR );
+		glStencilOpSeparate( GL_BACK, GL_KEEP, GL_INCR, GL_INCR );
+	}
+	else
+	{
+		// Z-fail
+	}
+	
+	
+	// get vertex buffer
+	const vertCacheHandle_t vbHandle = drawSurf->shadowCache;
+	idVertexBuffer* vertexBuffer;
+	if( vertexCache.CacheIsStatic( vbHandle ) )
+	{
+		vertexBuffer = &vertexCache.staticData.vertexBuffer;
+	}
+	else
+	{
+		const uint64 frameNum = ( int )( vbHandle >> VERTCACHE_FRAME_SHIFT ) & VERTCACHE_FRAME_MASK;
+		if( frameNum != ( ( vertexCache.currentFrame - 1 ) & VERTCACHE_FRAME_MASK ) )
+		{
+			idLib::Warning( "RB_DrawElementsWithCounters, vertexBuffer == NULL" );
+			return;
+		}
+		vertexBuffer = &vertexCache.frameData[vertexCache.drawListNum].vertexBuffer;
+	}
+	const int vertOffset = ( int )( vbHandle >> VERTCACHE_OFFSET_SHIFT ) & VERTCACHE_OFFSET_MASK;
+	
+	// get index buffer
+	const vertCacheHandle_t ibHandle = drawSurf->indexCache;
+	idIndexBuffer* indexBuffer;
+	if( vertexCache.CacheIsStatic( ibHandle ) )
+	{
+		indexBuffer = &vertexCache.staticData.indexBuffer;
+	}
+	else
+	{
+		const uint64 frameNum = ( int )( ibHandle >> VERTCACHE_FRAME_SHIFT ) & VERTCACHE_FRAME_MASK;
+		if( frameNum != ( ( vertexCache.currentFrame - 1 ) & VERTCACHE_FRAME_MASK ) )
+		{
+			idLib::Warning( "RB_DrawElementsWithCounters, indexBuffer == NULL" );
+			return;
+		}
+		indexBuffer = &vertexCache.frameData[vertexCache.drawListNum].indexBuffer;
+	}
+	const uint64 indexOffset = ( int )( ibHandle >> VERTCACHE_OFFSET_SHIFT ) & VERTCACHE_OFFSET_MASK;
+	
+	RENDERLOG_PRINTF( "Binding Buffers: %p %p\n", vertexBuffer, indexBuffer );
+	
+	// RB: 64 bit fixes, changed GLuint to GLintptr
+	if( currentIndexBuffer != ( GLintptr )indexBuffer->GetAPIObject() || !r_useStateCaching.GetBool() )
+	{
+		glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, ( GLintptr )indexBuffer->GetAPIObject() );
+		currentIndexBuffer = ( GLintptr )indexBuffer->GetAPIObject();
+	}
+	
+	if( drawSurf->jointCache )
+	{
+		assert( renderProgManager.ShaderUsesJoints() );
+		
+		idUniformBuffer jointBuffer;
+		if( !vertexCache.GetJointBuffer( drawSurf->jointCache, &jointBuffer ) )
+		{
+			idLib::Warning( "RB_DrawElementsWithCounters, jointBuffer == NULL" );
+			return;
+		}
+		assert( ( jointBuffer.GetOffset() & ( glConfig.uniformBufferOffsetAlignment - 1 ) ) == 0 );
+		
+		const GLintptr ubo = reinterpret_cast< GLintptr >( jointBuffer.GetAPIObject() );
+		glBindBufferRange( GL_UNIFORM_BUFFER, 0, ubo, jointBuffer.GetOffset(), jointBuffer.GetSize() * sizeof( idJointMat ) );
+		
+		if( ( vertexLayout != LAYOUT_DRAW_SHADOW_VERT_SKINNED ) || ( currentVertexBuffer != ( GLintptr )vertexBuffer->GetAPIObject() ) || !r_useStateCaching.GetBool() )
+		{
+			glBindBuffer( GL_ARRAY_BUFFER, ( GLintptr )vertexBuffer->GetAPIObject() );
+			currentVertexBuffer = ( GLintptr )vertexBuffer->GetAPIObject();
+			
+			glEnableVertexAttribArray( PC_ATTRIB_INDEX_VERTEX );
+			glDisableVertexAttribArray( PC_ATTRIB_INDEX_NORMAL );
+			glEnableVertexAttribArray( PC_ATTRIB_INDEX_COLOR );
+			glEnableVertexAttribArray( PC_ATTRIB_INDEX_COLOR2 );
+			glDisableVertexAttribArray( PC_ATTRIB_INDEX_ST );
+			glDisableVertexAttribArray( PC_ATTRIB_INDEX_TANGENT );
+			
+#if defined(USE_GLES2) || defined(USE_GLES3)
+			glVertexAttribPointer( PC_ATTRIB_INDEX_VERTEX, 4, GL_FLOAT, GL_FALSE, sizeof( idShadowVertSkinned ), ( void* )( vertOffset + SHADOWVERTSKINNED_XYZW_OFFSET ) );
+			glVertexAttribPointer( PC_ATTRIB_INDEX_COLOR, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof( idShadowVertSkinned ), ( void* )( vertOffset + SHADOWVERTSKINNED_COLOR_OFFSET ) );
+			glVertexAttribPointer( PC_ATTRIB_INDEX_COLOR2, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof( idShadowVertSkinned ), ( void* )( vertOffset + SHADOWVERTSKINNED_COLOR2_OFFSET ) );
+#else
+			glVertexAttribPointer( PC_ATTRIB_INDEX_VERTEX, 4, GL_FLOAT, GL_FALSE, sizeof( idShadowVertSkinned ), ( void* )( SHADOWVERTSKINNED_XYZW_OFFSET ) );
+			glVertexAttribPointer( PC_ATTRIB_INDEX_COLOR, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof( idShadowVertSkinned ), ( void* )( SHADOWVERTSKINNED_COLOR_OFFSET ) );
+			glVertexAttribPointer( PC_ATTRIB_INDEX_COLOR2, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof( idShadowVertSkinned ), ( void* )( SHADOWVERTSKINNED_COLOR2_OFFSET ) );
+#endif
+			
+			vertexLayout = LAYOUT_DRAW_SHADOW_VERT_SKINNED;
+		}
+		
+	}
+	else
+	{
+		if( ( vertexLayout != LAYOUT_DRAW_SHADOW_VERT ) || ( currentVertexBuffer != ( GLintptr )vertexBuffer->GetAPIObject() ) || !r_useStateCaching.GetBool() )
+		{
+			glBindBuffer( GL_ARRAY_BUFFER, ( GLintptr )vertexBuffer->GetAPIObject() );
+			currentVertexBuffer = ( GLintptr )vertexBuffer->GetAPIObject();
+			
+			glEnableVertexAttribArray( PC_ATTRIB_INDEX_VERTEX );
+			glDisableVertexAttribArray( PC_ATTRIB_INDEX_NORMAL );
+			glDisableVertexAttribArray( PC_ATTRIB_INDEX_COLOR );
+			glDisableVertexAttribArray( PC_ATTRIB_INDEX_COLOR2 );
+			glDisableVertexAttribArray( PC_ATTRIB_INDEX_ST );
+			glDisableVertexAttribArray( PC_ATTRIB_INDEX_TANGENT );
+			
+#if defined(USE_GLES2) || defined(USE_GLES3)
+			glVertexAttribPointer( PC_ATTRIB_INDEX_VERTEX, 4, GL_FLOAT, GL_FALSE, sizeof( idShadowVert ), ( void* )( vertOffset + SHADOWVERT_XYZW_OFFSET ) );
+#else
+			glVertexAttribPointer( PC_ATTRIB_INDEX_VERTEX, 4, GL_FLOAT, GL_FALSE, sizeof( idShadowVert ), ( void* )( SHADOWVERT_XYZW_OFFSET ) );
+#endif
+			
+			vertexLayout = LAYOUT_DRAW_SHADOW_VERT;
+		}
+	}
+	// RB end
+	
+	renderProgManager.CommitUniforms();
+	
+	if( drawSurf->jointCache )
+	{
+#if defined(USE_GLES3) //defined(USE_GLES2)
+		glDrawElements( GL_TRIANGLES, r_singleTriangle.GetBool() ? 3 : drawSurf->numIndexes, GL_INDEX_TYPE, ( triIndex_t* )indexOffset );
+#else
+		glDrawElementsBaseVertex( GL_TRIANGLES, r_singleTriangle.GetBool() ? 3 : drawSurf->numIndexes, GL_INDEX_TYPE, ( triIndex_t* )indexOffset, vertOffset / sizeof( idShadowVertSkinned ) );
+#endif
+	}
+	else
+	{
+#if defined(USE_GLES3)
+		glDrawElements( GL_TRIANGLES, r_singleTriangle.GetBool() ? 3 : drawSurf->numIndexes, GL_INDEX_TYPE, ( triIndex_t* )indexOffset );
+#else
+		glDrawElementsBaseVertex( GL_TRIANGLES, r_singleTriangle.GetBool() ? 3 : drawSurf->numIndexes, GL_INDEX_TYPE, ( triIndex_t* )indexOffset, vertOffset / sizeof( idShadowVert ) );
+#endif
+	}
+	
+	// RB: added stats
+	pc.c_shadowElements++;
+	pc.c_shadowIndexes += drawSurf->numIndexes;
+	// RB end
+	
+	if( !renderZPass && r_useStencilShadowPreload.GetBool() )
+	{
+		// render again with Z-pass
+		glStencilOpSeparate( GL_FRONT, GL_KEEP, GL_KEEP, GL_INCR );
+		glStencilOpSeparate( GL_BACK, GL_KEEP, GL_KEEP, GL_DECR );
+		
+		if( drawSurf->jointCache )
+		{
+#if defined(USE_GLES3)
+			glDrawElements( GL_TRIANGLES, r_singleTriangle.GetBool() ? 3 : drawSurf->numIndexes, GL_INDEX_TYPE, ( triIndex_t* )indexOffset );
+#else
+			glDrawElementsBaseVertex( GL_TRIANGLES, r_singleTriangle.GetBool() ? 3 : drawSurf->numIndexes, GL_INDEX_TYPE, ( triIndex_t* )indexOffset, vertOffset / sizeof( idShadowVertSkinned ) );
+#endif
+		}
+		else
+		{
+#if defined(USE_GLES3)
+			glDrawElements( GL_TRIANGLES, r_singleTriangle.GetBool() ? 3 : drawSurf->numIndexes, GL_INDEX_TYPE, ( triIndex_t* )indexOffset );
+#else
+			glDrawElementsBaseVertex( GL_TRIANGLES, r_singleTriangle.GetBool() ? 3 : drawSurf->numIndexes, GL_INDEX_TYPE, ( triIndex_t* )indexOffset, vertOffset / sizeof( idShadowVert ) );
+#endif
+		}
+		
+		// RB: added stats
+		pc.c_shadowElements++;
+		pc.c_shadowIndexes += drawSurf->numIndexes;
+		// RB end
+	}
 }

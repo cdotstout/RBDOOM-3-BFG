@@ -128,6 +128,15 @@ idBufferObject::idBufferObject() {
 
 /*
 ========================
+idVertexBuffer::idVertexBuffer
+========================
+*/
+idVertexBuffer::idVertexBuffer() {
+	SetUnmapped();
+}
+
+/*
+========================
 idVertexBuffer::~idVertexBuffer
 ========================
 */
@@ -189,6 +198,15 @@ idIndexBuffer
 
 /*
 ========================
+idIndexBuffer::idIndexBuffer
+========================
+*/
+idIndexBuffer::idIndexBuffer() {
+	SetUnmapped();
+}
+
+/*
+========================
 idIndexBuffer::~idIndexBuffer
 ========================
 */
@@ -247,6 +265,16 @@ idUniformBuffer
 
 ================================================================================================
 */
+
+/*
+========================
+idUniformBuffer::idUniformBuffer
+========================
+*/
+idUniformBuffer::idUniformBuffer()
+{
+	SetUnmapped();
+}
 
 /*
 ========================

@@ -351,8 +351,11 @@ private:
 	void				GL_StartFrame();
 	void				GL_EndFrame();
 	
-	uint64				GL_GetCurrentState() const;
-	uint64				GL_GetCurrentStateMinusStencil() const;
+	uint64				GL_GetCurrentState() const { return glStateBits; }
+	uint64				GL_GetCurrentStateMinusStencil() const 
+	{
+			return glStateBits & ~(GLS_STENCIL_OP_BITS|GLS_STENCIL_FUNC_BITS|GLS_STENCIL_FUNC_REF_BITS|GLS_STENCIL_FUNC_MASK_BITS);
+	}
 	void				GL_SetDefaultState();
 	
 	void				GL_State( uint64 stateBits, bool forceGlState = false );
@@ -429,8 +432,12 @@ private:
 	void				CreateRenderPass();
 	void				CreateFrameBuffers();
 	void				DestroyFrameBuffers();
-//	void				SetBuffer( const void* data );
-	
+
+#if !defined(ID_VULKAN)
+	void				SetBuffer( const void* data );
+	void 				GL_SelectTexture( int unit );
+#endif
+
 private:
 	void				DBG_SimpleSurfaceSetup( const drawSurf_t* drawSurf );
 	void				DBG_SimpleWorldSetup();

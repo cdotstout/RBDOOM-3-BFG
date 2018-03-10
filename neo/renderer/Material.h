@@ -261,6 +261,7 @@ typedef enum
 
 typedef enum
 {
+	CT_INVALID,
 	CT_FRONT_SIDED,
 	CT_BACK_SIDED,
 	CT_TWO_SIDED

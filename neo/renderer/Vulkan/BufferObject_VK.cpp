@@ -55,15 +55,6 @@ idVertexBuffer
 
 /*
 ========================
-idVertexBuffer::idVertexBuffer
-========================
-*/
-idVertexBuffer::idVertexBuffer() {
-	SetUnmapped();
-}
-
-/*
-========================
 idVertexBuffer::AllocBufferObject
 ========================
 */
@@ -272,22 +263,6 @@ void idVertexBuffer::ClearWithoutFreeing() {
 #endif
 }
 
-/*
-================================================================================================
-
-idIndexBuffer
-
-================================================================================================
-*/
-
-/*
-========================
-idIndexBuffer::idIndexBuffer
-========================
-*/
-idIndexBuffer::idIndexBuffer() {
-	SetUnmapped();
-}
 
 /*
 ========================

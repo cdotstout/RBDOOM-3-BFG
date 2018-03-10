@@ -861,8 +861,7 @@ void idRenderBackend::DBG_ShowSurfaceInfo( drawSurf_t** drawSurfs, int numDrawSu
 	
 	// foresthale 2014-05-02: don't use a shader for tools
 	//renderProgManager.BindShader_TextureVertexColor();
-	GL_SelectTexture( 0 );
-	globalImages->whiteImage->Bind();
+	GL_BindTexture( 0, globalImages->whiteImage);
 	
 	RB_SetVertexColorParms( SVC_MODULATE );
 	// foresthale 2014-05-02: don't use a shader for tools
@@ -2756,18 +2755,14 @@ void idRenderBackend::DBG_TestImage()
 	// Bind the Texture
 	if( ( imageCr != NULL ) && ( imageCb != NULL ) )
 	{
-		GL_SelectTexture( 0 );
-		image->Bind();
-		GL_SelectTexture( 1 );
-		imageCr->Bind();
-		GL_SelectTexture( 2 );
-		imageCb->Bind();
+		GL_BindTexture( 0, image );
+		GL_BindTexture( 1, imageCr );
+		GL_BindTexture( 2, imageCb );
 		renderProgManager.BindShader_Bink();
 	}
 	else
 	{
-		GL_SelectTexture( 0 );
-		image->Bind();
+		GL_BindTexture( 0, image);
 		// Set Shader
 		renderProgManager.BindShader_Texture();
 	}
@@ -2858,8 +2853,7 @@ void idRenderBackend::DBG_ShowShadowMaps()
 		// Set Color
 		GL_Color( 1, 1, 1, 1 );
 		
-		GL_SelectTexture( 0 );
-		image->Bind();
+		GL_BindTexture( 0, image);
 		glTexParameteri( GL_TEXTURE_2D_ARRAY, GL_TEXTURE_COMPARE_MODE, GL_NONE );
 		
 		

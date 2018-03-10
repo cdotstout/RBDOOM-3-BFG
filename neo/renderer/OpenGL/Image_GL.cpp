@@ -73,6 +73,16 @@ idImage::~idImage()
 }
 
 /*
+====================
+idImage::~IsLoaded
+====================
+*/
+bool idImage::IsLoaded() const
+{
+	return texnum != TEXTURE_NOT_LOADED;
+}
+
+/*
 ==============
 Bind
 
@@ -280,7 +290,7 @@ void idImage::CopyDepthbuffer( int x, int y, int imageWidth, int imageHeight )
 idImage::SubImageUpload
 ========================
 */
-void idImage::SubImageUpload( int mipLevel, int x, int y, int z, int width, int height, const void* pic, int pixelPitch ) const
+void idImage::SubImageUpload( int mipLevel, int x, int y, int z, int width, int height, const void* pic, int pixelPitch )
 {
 	assert( x >= 0 && y >= 0 && mipLevel >= 0 && width >= 0 && height >= 0 && mipLevel < opts.numLevels );
 	

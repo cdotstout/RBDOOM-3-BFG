@@ -29,20 +29,7 @@ If you have questions concerning this license or the applicable additional terms
 
 #pragma hdrstop
 #include "precompiled.h"
-
-#include "RenderProgs.h"
-
-enum shaderFeature_t
-{
-	USE_GPU_SKINNING,
-	LIGHT_POINT,
-	LIGHT_PARALLEL,
-	BRIGHTPASS,
-	HDR_DEBUG,
-	USE_SRGB,
-	
-	MAX_SHADER_MACRO_NAMES,
-};
+#include "../RenderCommon.h"
 
 /*
 ================================================================================================
@@ -51,8 +38,26 @@ R_ReloadShaders
 */
 static void R_ReloadShaders( const idCmdArgs& args )
 {
-	renderProgManager->KillAllShaders();
-	renderProgManager->LoadAllShaders();
+	renderProgManager.KillAllShaders();
+	renderProgManager.LoadAllShaders();
+}
+
+/*
+================================================================================================
+idRenderProgManager::idRenderProgManager()
+================================================================================================
+*/
+idRenderProgManager::idRenderProgManager()
+{
+}
+
+/*
+================================================================================================
+idRenderProgManager::~idRenderProgManager()
+================================================================================================
+*/
+idRenderProgManager::~idRenderProgManager()
+{
 }
 
 /*
@@ -60,7 +65,7 @@ static void R_ReloadShaders( const idCmdArgs& args )
 idRenderProgManager::Init()
 ================================================================================================
 */
-void idRenderProgManagerGL::Init()
+void idRenderProgManager::Init()
 {
 	common->Printf( "----- GL: Initializing Render Shaders -----\n" );
 	
@@ -261,7 +266,7 @@ void idRenderProgManagerGL::Init()
 idRenderProgManager::LoadAllShaders()
 ================================================================================================
 */
-void idRenderProgManagerGL::LoadAllShaders()
+void idRenderProgManager::LoadAllShaders()
 {
 	for( int i = 0; i < vertexShaders.Num(); i++ )
 	{
@@ -289,7 +294,7 @@ void idRenderProgManagerGL::LoadAllShaders()
 idRenderProgManager::KillAllShaders()
 ================================================================================================
 */
-void idRenderProgManagerGL::KillAllShaders()
+void idRenderProgManager::KillAllShaders()
 {
 	Unbind();
 	for( int i = 0; i < vertexShaders.Num(); i++ )
@@ -323,7 +328,7 @@ void idRenderProgManagerGL::KillAllShaders()
 idRenderProgManager::FindVertexShader
 ================================================================================================
 */
-int idRenderProgManagerGL::FindVertexShader( const char* name )
+int idRenderProgManager::FindVertexShader( const char* name )
 {
 	for( int i = 0; i < vertexShaders.Num(); i++ )
 	{
@@ -359,7 +364,7 @@ int idRenderProgManagerGL::FindVertexShader( const char* name )
 idRenderProgManager::FindFragmentShader
 ================================================================================================
 */
-int idRenderProgManagerGL::FindFragmentShader( const char* name )
+int idRenderProgManager::FindFragmentShader( const char* name )
 {
 	for( int i = 0; i < fragmentShaders.Num(); i++ )
 	{
@@ -377,13 +382,25 @@ int idRenderProgManagerGL::FindFragmentShader( const char* name )
 	return index;
 }
 
+int	idRenderProgManager::FindShader( const char * name, rpStage_t stage )
+{
+	switch(stage) {
+		case SHADER_STAGE_VERTEX: 
+			return FindVertexShader(name);
+		case SHADER_STAGE_FRAGMENT: 
+			return FindFragmentShader(name);
+		default:
+			assert(false);
+			return -1; 
+	}
+}
 
 /*
 ================================================================================================
 idRenderProgManager::LoadVertexShader
 ================================================================================================
 */
-void idRenderProgManagerGL::LoadVertexShader( int index )
+void idRenderProgManager::LoadVertexShader( int index )
 {
 	if( vertexShaders[index].progId != INVALID_PROGID )
 	{
@@ -399,7 +416,7 @@ void idRenderProgManagerGL::LoadVertexShader( int index )
 idRenderProgManager::LoadFragmentShader
 ================================================================================================
 */
-void idRenderProgManagerGL::LoadFragmentShader( int index )
+void idRenderProgManager::LoadFragmentShader( int index )
 {
 	if( fragmentShaders[index].progId != INVALID_PROGID )
 	{
@@ -417,7 +434,7 @@ idRenderProgManager::BindShader
 ================================================================================================
 */
 // RB begin
-void idRenderProgManagerGL::BindShader( int progIndex, int vIndex, int fIndex, bool builtin )
+void idRenderProgManager::BindShader( int progIndex, int vIndex, int fIndex, bool builtin )
 {
 	if( currentVertexShader == vIndex && currentFragmentShader == fIndex )
 	{
@@ -470,7 +487,7 @@ void idRenderProgManagerGL::BindShader( int progIndex, int vIndex, int fIndex, b
 idRenderProgManager::Unbind
 ================================================================================================
 */
-void idRenderProgManagerGL::Unbind()
+void idRenderProgManager::Unbind()
 {
 	currentVertexShader = -1;
 	currentFragmentShader = -1;
@@ -479,20 +496,9 @@ void idRenderProgManagerGL::Unbind()
 }
 
 // RB begin
-bool idRenderProgManagerGL::IsShaderBound() const
+bool idRenderProgManager::IsShaderBound() const
 {
 	return ( currentVertexShader != -1 );
 }
 // RB end
-
-
-/*
-================================================================================================
-idRenderProgManager::SetRenderParm
-================================================================================================
-*/
-void idRenderProgManager::SetRenderParm( renderParm_t rp, const float* value )
-{
-	SetUniformValue( rp, value );
-}
 
